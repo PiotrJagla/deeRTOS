@@ -1,0 +1,21 @@
+[
+  {
+    "arguments": [
+      "/usr/bin/arm-none-eabi-gcc",
+      "-mcpu=cortex-m4",
+      "-mthumb",
+      "--specs=nano.specs",
+      "-DSTM32F302Rx",
+      "-Iexternal/CMSIS/CMSIS/Core/Include",
+      "-Iexternal/CMSIS/Device/ST/STM32F3/Include",
+      "-I./inc",
+      "-c",
+      "-o",
+      "obj/main.o",
+      "src/main.c"
+    ],
+    "directory": "/home/piotrek/GitHub/CMSIS_STM32F302x8_Starter",
+    "file": "/home/piotrek/GitHub/CMSIS_STM32F302x8_Starter/src/main.c",
+    "output": "/home/piotrek/GitHub/CMSIS_STM32F302x8_Starter/obj/main.o"
+  }
+]
