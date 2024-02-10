@@ -5,7 +5,7 @@
 #undef errno
 extern int errno;
 
-register char* stack_ptr asm("sp");
+register char* stack_ptr __asm__("sp");
 
 caddr_t _sbrk(int incr) {
   extern char __bss_end__;
