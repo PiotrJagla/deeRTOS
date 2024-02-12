@@ -5,7 +5,7 @@
 #define SRAM_SIZE (16U * 1024U)
 #define SRAM_END (SRAM_START + SRAM_SIZE)
 #define STACK_POINTER_INIT_ADDRESS (SRAM_END)
-#define ISR_VECTOR_SIZE_WORDS 114
+#define ISR_VECTOR_SIZE_WORDS 97
 
 void reset_handler(void);
 void default_handler(void);
@@ -17,7 +17,7 @@ void svcall_handler(void) __attribute__((weak, alias("default_handler")));
 void debug_monitor_handler(void) __attribute__((weak, alias("default_handler")));
 void pendsv_handler(void) __attribute__((weak, alias("default_handler")));
 void systick_handler(void) __attribute__((weak, alias("default_handler")));
-// continue adding device interrupt handlers
+void tim6_dac_handler(void) __attribute__((weak, alias("default_handler")));
 
 uint32_t isr_vector[ISR_VECTOR_SIZE_WORDS] __attribute__((section(".isr_vector"))) = {
   STACK_POINTER_INIT_ADDRESS,
@@ -36,6 +36,61 @@ uint32_t isr_vector[ISR_VECTOR_SIZE_WORDS] __attribute__((section(".isr_vector")
   0,
   (uint32_t)&pendsv_handler,
   (uint32_t)&systick_handler,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  (uint32_t)&tim6_dac_handler,
   // continue adding device interrupt handlers
 };
 
