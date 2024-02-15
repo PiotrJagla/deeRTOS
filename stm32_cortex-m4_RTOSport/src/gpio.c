@@ -32,6 +32,14 @@ void GpioSetPull(GPIO_TypeDef* gpiox, unsigned long gpioPin, uint8_t mode) {
   gpiox->PUPDR |= (mode<<gpioPin);
 }
 
+void GpioWritePin(GPIO_TypeDef* gpiox, uint8_t gpioPin, bool value) {
+  if(value) {
+    GpioSetPin(gpiox, gpioPin);
+  } else {
+    GpioResetPin(gpiox, gpioPin);
+  }
+}
+
 bool GpioReadPin(GPIO_TypeDef* gpiox, uint8_t gpioPin) {
   return gpiox->IDR & (1<<gpioPin);
 }
@@ -45,6 +53,17 @@ void EnableTim16_CH1_PB8() {
 void EnableADC_IN1_PA0() {
   GpioSetPinMode(GPIOA, GPIO_MODER_MODER0_Pos, GPIO_ANALOG_MODE);
 }
+
+void EnableADC_IN2_PA1() {
+  GpioSetPinMode(GPIOA, GPIO_MODER_MODER1_Pos, GPIO_ANALOG_MODE);
+}
+
+
+void GpioLD2EnableOutput(){
+  GpioSetPinMode(GPIO_LD2_BASE, GPIO_MODER_MODER13_Pos, GPIO_OUTPUT);
+}
+
+
 
 
 

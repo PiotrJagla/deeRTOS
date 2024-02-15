@@ -18,6 +18,8 @@ void debug_monitor_handler(void) __attribute__((weak, alias("default_handler")))
 void pendsv_handler(void) __attribute__((weak, alias("default_handler")));
 void systick_handler(void) __attribute__((weak, alias("default_handler")));
 void tim6_dac_handler(void) __attribute__((weak, alias("default_handler")));
+void adc_handler(void) __attribute__((weak, alias("default_handler")));
+void dma_ch1_handler(void) __attribute__((weak, alias("default_handler")));
 
 uint32_t isr_vector[ISR_VECTOR_SIZE_WORDS] __attribute__((section(".isr_vector"))) = {
   STACK_POINTER_INIT_ADDRESS,
@@ -47,14 +49,14 @@ uint32_t isr_vector[ISR_VECTOR_SIZE_WORDS] __attribute__((section(".isr_vector")
   0,
   0,
   0,
+  (uint32_t)&dma_ch1_handler,
   0,
   0,
   0,
   0,
   0,
   0,
-  0,
-  0,
+  (uint32_t)&adc_handler,
   0,
   0,
   0,

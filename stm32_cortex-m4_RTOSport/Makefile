@@ -1,6 +1,12 @@
 CC=arm-none-eabi-gcc 
 
-INC=-Iexternal/CMSIS/CMSIS/Core/Include -Iexternal/CMSIS/Device/ST/STM32F3/Include -I./inc
+INC=-Iexternal/CMSIS/CMSIS/Core/Include -Iexternal/CMSIS/Device/ST/STM32F3/Include -I./inc  \
+	-Iexternal/stm32_graphics_display_drivers/Drivers \
+	-Iexternal/stm32_graphics_display_drivers/Drivers/lcd/ili9341 \
+	-Iexternal/stm32_graphics_display_drivers/Drivers/Fonts \
+	-Iexternal/stm32_graphics_display_drivers/Drivers/stm32f3xx \
+	-Iexternal/stm32f3xx_hal_driver/Inc
+
 CFLAGS=-mcpu=cortex-m4 -mthumb --specs=nano.specs -DSTM32F302Rx 
 LINKER_FILE=linker_script.ld
 LD_FLAGS=-T $(LINKER_FILE) 
