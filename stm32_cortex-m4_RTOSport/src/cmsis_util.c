@@ -22,15 +22,15 @@ void task2() {
 }
 
 void systick_handler() {
-  static bool t = false;
-  if(t) {
-    __asm__("MOV r0, task1");
-    __asm__("MOV pc, r0");
-      t = !t;
-  } else {
-    __asm__("MOV r0, task2");
-    __asm__("MOV pc, r0");
-  }
+  //static bool t = false;
+  //if(t) {
+  //  __asm__("MOV r0, task1");
+  //  __asm__("MOV pc, r0");
+  //    t = !t;
+  //} else {
+  //  __asm__("MOV r0, task2");
+  //  __asm__("MOV pc, r0");
+  //}
   //printf("systick inter\n\r");
   ticks++;
 }
