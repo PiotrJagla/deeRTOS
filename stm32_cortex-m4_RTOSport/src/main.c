@@ -6,34 +6,146 @@
 #include <cmsis_util.h>
 #include <gpio.h>
 #include <timers.h>
+#include <stdint.h>
 
-
+void OSSched();
+void OSContextSwitch();
 void CustomGpioInit();
 
-void thread1() {
+typedef struct {
+  void* sp;
+} OSThread;
+
+typedef void(*OSThreadHandler)();
+
+void OSThreadStart(OSThread* me, OSThreadHandler threadHandler, void* stkSto, uint32_t stkSize) {
+
+  uint32_t* sp = (uint32_t*)((((uint32_t)stkSto + stkSize)/8)*8);
+
+  *(--sp) = (1U << 24); // xPSR thums set
+  *(--sp) = (uint32_t)threadHandler; // PC
+  *(--sp) = 0x0000000EU; // LR
+  *(--sp) = 0x0000000CU; // R12
+  *(--sp) = 0x00000003U; // R3
+  *(--sp) = 0x00000002U; // R2
+  *(--sp) = 0x00000001U; // R1
+  *(--sp) = 0x00000000U; // R0
+  
+  // Save additional registrs
+  //*(--sp) = 0x0000000BU; // R11
+  //*(--sp) = 0x0000000AU; // R10
+  //*(--sp) = 0x00000009U; // R9
+  //*(--sp) = 0x00000008U; // R8
+  //*(--sp) = 0x00000007U; // R7
+  //*(--sp) = 0x00000006U; // R6
+  //*(--sp) = 0x00000005U; // R5
+  //*(--sp) = 0x00000004U; // R4
+  
+  me->sp = sp;
+}
+
+
+
+#define STACK_SIZE_TASK1 40
+uint32_t stack_task1[STACK_SIZE_TASK1];
+//OSThread sp_task1;
+uint32_t* sp_task1 = &stack_task1[STACK_SIZE_TASK1];
+void task1() {
   while(1) {
-    delay_ms(300);
-    printf("taks1\n\r");
+    GPIOA->ODR |= (1<<8);
+    GPIOB->ODR &= ~(1<<10);
+    //for(int i = 0 ; i < 999999 ; ++i){}
   }
 }
 
-void thread2() {
+#define STACK_SIZE_TASK2 40
+uint32_t stack_task2[STACK_SIZE_TASK2];
+OSThread sp_task2;
+void task2() {
   while(1) {
-    delay_ms(300);
-    printf("taks2\n\r");
+    GPIOB->ODR |= (1<<10);
+    GPIOA->ODR &= ~(1<<8);
+    //for(int i = 0 ; i < 999999 ; ++i){}
   }
 }
+
+static bool whatTask = false;
+OSThread* nextTask = (void*)0;
+OSThread* currTask = (void*)0;
+void OSSched() {
+  if(whatTask) {
+    nextTask = &sp_task1;
+    currTask = &sp_task2;
+    whatTask = !whatTask;
+
+  } else {
+    nextTask = &sp_task2;
+    currTask = &sp_task1;
+    whatTask = !whatTask;
+  }
+}
+
+uint32_t ticks = 0;
+__attribute((naked)) void systick_handler() {
+  //ticks++;
+  __asm__ volatile(
+    "LDR r1, =sp_task1 "
+    : "MOV sp, r1"
+  );
+  //__asm__("MOV sp, r1");
+  //__disable_irq();
+  //mySp = (uint32_t*)sp_task1.sp;
+  //__asm__("LDR r1, =mySp");
+  //__asm__("LDR r1, [r1, #0x00]");
+  //__asm__("STR sp, [r1, #0x00]");
+  //__enable_irq();
+  
+}
+
+
+void OSContextSwitch() {
+  __asm__("LDR r1, =currTask");
+  __asm__("LDR r1, [r1,#0x00]");
+
+  __asm__("LDR r1, =nextTask");
+  __asm__("LDR r1, [r1,#0x00]");
+  __asm__("LDR sp, [r1,#0x00]");
+
+  __asm__("LDR r1,=nextTask");
+  __asm__("LDR r1, [r1,#0x00]");
+  __asm__("LDR r2,=currTask");
+  __asm__("STR r1, [r2,#0x00]");
+
+  __asm__("POP {r4-r11}");
+
+}
+
 
 int main(void) {
-  SysTick_Config(CLOCK_FREQ/1000);
+  //SysTick_Config(CLOCK_FREQ/1000);
+  SysTick_Config(CLOCK_FREQ/1);
   __enable_irq();
   usart_init(USART2);
   GpioInit();
   CustomGpioInit();
 
 
+  *(--sp_task1) = (1U << 24); // xPSR thumb set
+  *(--sp_task1) = (uint32_t)&task1; // PC
+  *(--sp_task1) = 0x0000000EU; // LR
+  *(--sp_task1) = 0x0000000CU; // R12
+  *(--sp_task1) = 0x00000003U; // R3
+  *(--sp_task1) = 0x00000002U; // R2
+  *(--sp_task1) = 0x00000001U; // R1
+  *(--sp_task1) = 0x00000000U; // R0
 
- 
+  //OSThreadStart(&sp_task1, &task1, stack_task1, STACK_SIZE_TASK1);
+  //OSThreadStart(&sp_task2, &task2, stack_task2, STACK_SIZE_TASK2);
+
+  //currTask = &sp_task1;
+  //nextTask = &sp_task2;
+
+
   while(1) {
   }
 }
