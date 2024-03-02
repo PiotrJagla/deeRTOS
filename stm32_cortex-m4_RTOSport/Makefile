@@ -7,7 +7,7 @@ INC=-Iexternal/CMSIS/CMSIS/Core/Include -Iexternal/CMSIS/Device/ST/STM32F3/Inclu
 	-Iexternal/stm32_graphics_display_drivers/Drivers/stm32f3xx 
 
 
-CFLAGS=-mcpu=cortex-m4 -mthumb --specs=nano.specs -DSTM32F302Rx
+CFLAGS=-mcpu=cortex-m4 -mthumb --specs=nano.specs -DSTM32F302Rx -O0
 LINKER_FILE=linker_script.ld
 LD_FLAGS=-T $(LINKER_FILE) 
 

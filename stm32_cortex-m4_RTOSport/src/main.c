@@ -12,36 +12,35 @@ void CustomGpioInit();
 
 void thread1() {
   while(1) {
+    delay_ms(300);
     printf("taks1\n\r");
   }
 }
 
 void thread2() {
   while(1) {
+    delay_ms(300);
     printf("taks2\n\r");
   }
-  
 }
 
-int main(void)
-{
+int main(void) {
   SysTick_Config(CLOCK_FREQ/1000);
   __enable_irq();
   usart_init(USART2);
   GpioInit();
   CustomGpioInit();
 
+
+
  
-
-  while(1)
-  {
-
-    //GpioTogglePin(GPIO_LD2_BASE, GPIO_LD2_PIN);
-    //delay_ms(1000);
+  while(1) {
   }
 }
 
 
 void CustomGpioInit() {
   GpioLD2EnableOutput();
+  GpioSetPinMode(GPIOB, GPIO_MODER_MODER10_Pos, GPIO_OUTPUT);
+  GpioSetPinMode(GPIOA, GPIO_MODER_MODER8_Pos, GPIO_OUTPUT);
 }

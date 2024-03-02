@@ -8,30 +8,26 @@
 static uint32_t ticks;
 
 void task1() {
-  while(1) {
-    printf("hello from taks 1\n");
-  }
+  GPIOA->ODR |= (1<<8);
+  GPIOB->ODR &= ~(1<<10);
+  GpioResetPin(GPIO_LD2_BASE, GPIO_LD2_PIN);
+  for(int i = 0 ; i < 999999 ; ++i){}
+  __asm__("LDR r4, =task2");
+  __asm__("MOV pc, r4");
 }
 
 void task2() {
-  while(1){
-    //printf("hello from taks 2\n");
-    GpioTogglePin(GPIO_LD2_BASE, GPIO_LD2_PIN);
-
-  }
+  GPIOB->ODR |= (1<<10);
+  GPIOA->ODR &= ~(1<<8);
+  GpioSetPin(GPIO_LD2_BASE, GPIO_LD2_PIN);
+  for(int i = 0 ; i < 999999 ; ++i){}
+  __asm__("LDR r4, =task1");
+  __asm__("MOV pc, r4");
 }
 
 void systick_handler() {
-  //static bool t = false;
-  //if(t) {
-  //  __asm__("MOV r0, task1");
-  //  __asm__("MOV pc, r0");
-  //    t = !t;
-  //} else {
-  //  __asm__("MOV r0, task2");
-  //  __asm__("MOV pc, r0");
-  //}
-  //printf("systick inter\n\r");
+  __asm__("LDR r0, =task1");
+  __asm__("MOV pc, r0");
   ticks++;
 }
 
