@@ -45,6 +45,9 @@ void OSThreadStart(OSThread* me, OSThreadHandler threadHandler, void* stkSto, ui
 }
 
 
+uint32_t* sp_next;
+uint32_t* sp_curr;
+
 
 #define STACK_SIZE_TASK1 40
 uint32_t stack_task1[STACK_SIZE_TASK1];
@@ -60,7 +63,8 @@ void task1() {
 
 #define STACK_SIZE_TASK2 40
 uint32_t stack_task2[STACK_SIZE_TASK2];
-OSThread sp_task2;
+//OSThread sp_task2;
+uint32_t* sp_task2 = &stack_task2[STACK_SIZE_TASK2];
 void task2() {
   while(1) {
     GPIOB->ODR |= (1<<10);
@@ -72,35 +76,34 @@ void task2() {
 static bool whatTask = false;
 OSThread* nextTask = (void*)0;
 OSThread* currTask = (void*)0;
-void OSSched() {
-  if(whatTask) {
-    nextTask = &sp_task1;
-    currTask = &sp_task2;
-    whatTask = !whatTask;
+//void OSSched() {
+//  if(whatTask) {
+//    nextTask = &sp_task1;
+//    currTask = &sp_task2;
+//    whatTask = !whatTask;
+//
+//  } else {
+//    nextTask = &sp_task2;
+//    currTask = &sp_task1;
+//    whatTask = !whatTask;
+//  }
+//}
 
-  } else {
-    nextTask = &sp_task2;
-    currTask = &sp_task1;
-    whatTask = !whatTask;
-  }
+__attribute__((naked)) void systick_handler() {
+  __asm__("CPSID I");
+
+  __asm__("LDR r1, =sp_task2");
+  __asm__("LDR r0, [r1]");
+  __asm__("MOV sp, r0");
+
+
+  __asm__("CPSIE I");
+  __asm__("BX LR");
 }
-
 uint32_t ticks = 0;
-__attribute((naked)) void systick_handler() {
-  //ticks++;
-  __asm__ volatile(
-    "LDR r1, =sp_task1 "
-    : "MOV sp, r1"
-  );
-  //__asm__("MOV sp, r1");
-  //__disable_irq();
-  //mySp = (uint32_t*)sp_task1.sp;
-  //__asm__("LDR r1, =mySp");
-  //__asm__("LDR r1, [r1, #0x00]");
-  //__asm__("STR sp, [r1, #0x00]");
-  //__enable_irq();
-  
-}
+//void systick_handler() {
+//  ticks++;
+//}
 
 
 void OSContextSwitch() {
@@ -138,6 +141,15 @@ int main(void) {
   *(--sp_task1) = 0x00000002U; // R2
   *(--sp_task1) = 0x00000001U; // R1
   *(--sp_task1) = 0x00000000U; // R0
+  
+  *(--sp_task2) = (1U << 24); // xPSR thumb set
+  *(--sp_task2) = (uint32_t)&task2; // PC
+  *(--sp_task2) = 0x0000000EU; // LR
+  *(--sp_task2) = 0x0000000CU; // R12
+  *(--sp_task2) = 0x00000003U; // R3
+  *(--sp_task2) = 0x00000002U; // R2
+  *(--sp_task2) = 0x00000001U; // R1
+  *(--sp_task2) = 0x00000000U; // R0
 
   //OSThreadStart(&sp_task1, &task1, stack_task1, STACK_SIZE_TASK1);
   //OSThreadStart(&sp_task2, &task2, stack_task2, STACK_SIZE_TASK2);
