@@ -1,3 +1,3 @@
-This is my own RTOS.
-I dont know how far i will go.
-For now it consists of nor working task scheduler.
+This is my own RTOS. <br>
+I dont know how far i will go. <br>
+For now it consists of not working task scheduler. <br>
