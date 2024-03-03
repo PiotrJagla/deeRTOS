@@ -89,7 +89,56 @@ OSThread* currTask = (void*)0;
 //  }
 //}
 
-__attribute__((naked)) void systick_handler() {
+uint32_t ticks = 0;
+void systick_handler() {
+  ++ticks;
+
+
+  __asm__("CPSID I");
+
+  //Schedule
+  //if(sp_curr == sp_task1) {
+  //  sp_next = sp_task2;
+  //} else {
+  //  sp_next = sp_task1;
+  //}
+
+  //Switch context
+  //Save current stack context
+
+  if(ticks != 1) {
+    __asm__("PUSH {r4-r11}");
+
+    __asm__("LDR r1, =sp_curr");
+    __asm__("LDR r1, [r1,#0x00]");
+    __asm__("MOV r1, sp");
+  }
+
+  //Restore next task context
+  // sp = next task stack pointer
+  __asm__("LDR r1, =sp_next");
+  __asm__("LDR r1, [r1,#0x00]");
+  __asm__("MOV sp, r1");
+
+  // curr stack pointer = next stack pointer
+  __asm__("LDR r1, =sp_next");
+  __asm__("LDR r1, [r1, #0x00]");
+  __asm__("LDR r2, =sp_curr");
+  __asm__("STR r1, [r2, #0x00]");
+
+  __asm__("POP {r4-r11}");
+
+  __asm__("CPSIE I");
+  __asm__("BX LR");
+
+}
+//void systick_handler() {
+//  ticks++;
+//}
+
+
+
+__attribute__((naked)) void OSContextSwitch() {
   __asm__("CPSID I");
 
   __asm__("LDR r1, =sp_task2");
@@ -99,28 +148,6 @@ __attribute__((naked)) void systick_handler() {
 
   __asm__("CPSIE I");
   __asm__("BX LR");
-}
-uint32_t ticks = 0;
-//void systick_handler() {
-//  ticks++;
-//}
-
-
-void OSContextSwitch() {
-  __asm__("LDR r1, =currTask");
-  __asm__("LDR r1, [r1,#0x00]");
-
-  __asm__("LDR r1, =nextTask");
-  __asm__("LDR r1, [r1,#0x00]");
-  __asm__("LDR sp, [r1,#0x00]");
-
-  __asm__("LDR r1,=nextTask");
-  __asm__("LDR r1, [r1,#0x00]");
-  __asm__("LDR r2,=currTask");
-  __asm__("STR r1, [r2,#0x00]");
-
-  __asm__("POP {r4-r11}");
-
 }
 
 
@@ -141,6 +168,15 @@ int main(void) {
   *(--sp_task1) = 0x00000002U; // R2
   *(--sp_task1) = 0x00000001U; // R1
   *(--sp_task1) = 0x00000000U; // R0
+  // Save additional registrs
+  *(--sp_task1) = 0x0000000BU; // R11
+  *(--sp_task1) = 0x0000000AU; // R10
+  *(--sp_task1) = 0x00000009U; // R9
+  *(--sp_task1) = 0x00000008U; // R8
+  *(--sp_task1) = 0x00000007U; // R7
+  *(--sp_task1) = 0x00000006U; // R6
+  *(--sp_task1) = 0x00000005U; // R5
+  *(--sp_task1) = 0x00000004U; // R4
   
   *(--sp_task2) = (1U << 24); // xPSR thumb set
   *(--sp_task2) = (uint32_t)&task2; // PC
@@ -150,6 +186,18 @@ int main(void) {
   *(--sp_task2) = 0x00000002U; // R2
   *(--sp_task2) = 0x00000001U; // R1
   *(--sp_task2) = 0x00000000U; // R0
+  // Save assitional registers
+  *(--sp_task2) = 0x0000000BU; // R11
+  *(--sp_task2) = 0x0000000AU; // R10
+  *(--sp_task2) = 0x00000009U; // R9
+  *(--sp_task2) = 0x00000008U; // R8
+  *(--sp_task2) = 0x00000007U; // R7
+  *(--sp_task2) = 0x00000006U; // R6
+  *(--sp_task2) = 0x00000005U; // R5
+  *(--sp_task2) = 0x00000004U; // R4
+  
+  sp_next = sp_task1;
+  sp_curr = sp_task2;
 
   //OSThreadStart(&sp_task1, &task1, stack_task1, STACK_SIZE_TASK1);
   //OSThreadStart(&sp_task2, &task2, stack_task2, STACK_SIZE_TASK2);
