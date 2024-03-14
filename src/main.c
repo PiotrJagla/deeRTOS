@@ -51,8 +51,10 @@ uint32_t stack_task1[STACK_SIZE_TASK1];
 uint32_t* sp_task1 = &stack_task1[STACK_SIZE_TASK1];
 void task1() {
   while(1) {
-    GPIOA->ODR |= (1<<8);
-    GPIOB->ODR &= ~(1<<10);
+    //GPIOA->ODR |= (1<<8);
+    //GPIOB->ODR &= ~(1<<10);
+    GPIOA->ODR ^= (1<<8);
+    for(int i = 0 ; i < 1000000; ++i) {}
   }
 }
 
@@ -61,16 +63,15 @@ uint32_t stack_task2[STACK_SIZE_TASK2];
 uint32_t* sp_task2 = &stack_task2[STACK_SIZE_TASK2];
 void task2() {
   while(1) {
-    GPIOB->ODR |= (1<<10);
-    GPIOA->ODR &= ~(1<<8);
+    GPIOB->ODR ^= (1<<10);
+    //GPIOB->ODR |= (1<<10);
+    //GPIOA->ODR &= ~(1<<8);
+    for(int i = 0 ; i < 500000; ++i) {}
   }
 }
 
 
 uint32_t ticks = 0;
-//void systick_handler() {
-//  ++ticks;
-//}
 
 void systick_handler() {
   ++ticks;
@@ -160,8 +161,8 @@ void systick_handler() {
 
 
 int main(void) {
-  //SysTick_Config(CLOCK_FREQ/1000);
   SysTick_Config(CLOCK_FREQ/1000);
+  //SysTick_Config(CLOCK_FREQ/1);
   __enable_irq();
   usart_init(USART2);
   GpioInit();
