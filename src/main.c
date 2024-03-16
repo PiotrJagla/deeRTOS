@@ -84,29 +84,28 @@ void systick_handler() {
   
   //Schedule next task
 
-
   //Switch context
   if(ticks %2 == 1) {
     tcb_next = &tcb_task1;
-    tcb_curr = &tcb_task2;
   } else {
     tcb_next = &tcb_task2;
-    tcb_curr = &tcb_task1;
   }
 
   //Save current stack context
 
-  if(ticks != 1) {
-    __asm__("POP {r7}");
-    __asm__("PUSH {r4-r11}");
 
-    __asm__("LDR r1, =tcb_curr");
-    __asm__("LDR r1, [r1, #0x00]");
-    __asm__("STR sp, [r1,#0x00]");
-  }
+  __asm__("LDR r1, =tcb_curr");
+  __asm__("LDR r1, [r1, #0x00]");
+  __asm__("CBZ r1, Context_Restore");
+
+  __asm__("POP {r7}");
+  __asm__("PUSH {r4-r11}");
+  __asm__("LDR r1, =tcb_curr");
+  __asm__("LDR r1, [r1, #0x00]");
+  __asm__("STR sp, [r1,#0x00]");
 
   //Restore next task context
-  
+  __asm__("Context_Restore:");
   // sp = next task stack pointer
   __asm__("LDR r1, =tcb_next");
   __asm__("LDR r1, [r1, #0x00]");
@@ -127,10 +126,10 @@ void systick_handler() {
 }
 
 
+
 int main(void) {
   SysTick_Config(CLOCK_FREQ/1000);
   //SysTick_Config(CLOCK_FREQ/1);
-  __enable_irq();
   usart_init(USART2);
   GpioInit();
   CustomGpioInit();
@@ -139,8 +138,9 @@ int main(void) {
   OSThreadStart(&tcb_task2, &task2, stack_task2, sizeof(stack_task2));
   OSThreadStart(&tcb_task1, &task1, stack_task1, sizeof(stack_task1));
 
-  tcb_curr = &tcb_task2;
+  tcb_curr = (void*)0;
   tcb_next = &tcb_task1;
+  __enable_irq();
 
 
   while(1) {
