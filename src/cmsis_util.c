@@ -12,6 +12,11 @@ extern uint32_t ticks;
 //void systick_handler() {
 //  ticks++;
 //}
+uint32_t tim6_ticks = 0;
+void tim6_dac_handler() {
+  tim6_ticks++;
+  printf("hwllo %d\r\n", tim6_ticks);
+}
 
 
 void delay_ms_tim6(uint32_t miliseconds) {
