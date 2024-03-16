@@ -14,8 +14,8 @@ typedef struct {
   void* sp;
 } OSThread;
 
-OSThread* tcb_curr;
-OSThread* tcb_next;
+OSThread* volatile tcb_curr;
+OSThread* volatile tcb_next;
 
 typedef void(*OSThreadHandler)();
 
@@ -43,11 +43,14 @@ void OSThreadStart(OSThread* me, OSThreadHandler threadHandler, void* stkSto, ui
   *(--sp) = 0x00000004U; // R4
   
   me->sp = sp;
+
+  uint32_t* stk_limit = (uint32_t*)(((((uint32_t)stkSto-1U)/8)+1U)*8);
+
+  for(sp = sp-1U; sp >= stk_limit; --sp) {
+    *sp = 0xDEADBEEF;
+  }
 }
 
-
-uint32_t* sp_next;
-uint32_t* sp_curr;
 
 #define STACK_SIZE_TASK1 40
 uint32_t stack_task1[STACK_SIZE_TASK1];
@@ -85,8 +88,10 @@ void systick_handler() {
   //Switch context
   if(ticks %2 == 1) {
     tcb_next = &tcb_task1;
+    tcb_curr = &tcb_task2;
   } else {
     tcb_next = &tcb_task2;
+    tcb_curr = &tcb_task1;
   }
 
   //Save current stack context
@@ -131,52 +136,11 @@ int main(void) {
   CustomGpioInit();
 
 
-  //*(--sp_task1) |= (1U << 24); // xPSR thumb set
-  //*(--sp_task1) = (uint32_t)&task1; // PC
-  //*(--sp_task1) = 0x0000000EU; // LR
-  //*(--sp_task1) = 0x0000000CU; // R12
-  //*(--sp_task1) = 0x00000003U; // R3
-  //*(--sp_task1) = 0x00000002U; // R2
-  //*(--sp_task1) = 0x00000001U; // R1
-  //*(--sp_task1) = 0x00000000U; // R0
-  //// Save additional registrs
-  //*(--sp_task1) = 0x0000000BU; // R11
-  //*(--sp_task1) = 0x0000000AU; // R10
-  //*(--sp_task1) = 0x00000009U; // R9
-  //*(--sp_task1) = 0x00000008U; // R8
-  //*(--sp_task1) = 0x00000007U; // R7
-  //*(--sp_task1) = 0x00000006U; // R6
-  //*(--sp_task1) = 0x00000005U; // R5
-  //*(--sp_task1) = 0x00000004U; // R4
-  //
-  //*(--sp_task2) |= (1U << 24); // xPSR thumb set
-  //*(--sp_task2) = (uint32_t)&task2; // PC
-  //*(--sp_task2) = 0x0000000EU; // LR
-  //*(--sp_task2) = 0x0000000CU; // R12
-  //*(--sp_task2) = 0x00000003U; // R3
-  //*(--sp_task2) = 0x00000002U; // R2
-  //*(--sp_task2) = 0x00000001U; // R1
-  //*(--sp_task2) = 0x00000000U; // R0
-  //// Save assitional registers
-  //*(--sp_task2) = 0x0000000BU; // R11
-  //*(--sp_task2) = 0x0000000AU; // R10
-  //*(--sp_task2) = 0x00000009U; // R9
-  //*(--sp_task2) = 0x00000008U; // R8
-  //*(--sp_task2) = 0x00000007U; // R7
-  //*(--sp_task2) = 0x00000006U; // R6
-  //*(--sp_task2) = 0x00000005U; // R5
-  //*(--sp_task2) = 0x00000004U; // R4
-
-  
-  //sp_next = sp_task1;
-  //sp_curr = sp_task2;
-
-  OSThreadStart(&tcb_task2, &task2, stack_task2, STACK_SIZE_TASK2);
-  OSThreadStart(&tcb_task1, &task1, stack_task1, STACK_SIZE_TASK1);
+  OSThreadStart(&tcb_task2, &task2, stack_task2, sizeof(stack_task2));
+  OSThreadStart(&tcb_task1, &task1, stack_task1, sizeof(stack_task1));
 
   tcb_curr = &tcb_task2;
   tcb_next = &tcb_task1;
-  //task2();
 
 
   while(1) {
