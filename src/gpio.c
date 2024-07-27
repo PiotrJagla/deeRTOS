@@ -44,6 +44,18 @@ bool GpioReadPin(GPIO_TypeDef* gpiox, uint8_t gpioPin) {
   return gpiox->IDR & (1<<gpioPin);
 }
 
+void enable_i2c() {
+  GPIOB->MODER |= ((0b10) << GPIO_MODER_MODER8_Pos);
+  GPIOB->MODER |= ((0b10) << GPIO_MODER_MODER9_Pos);
+
+  //Enable pull ups
+  GPIOB->PUPDR |= ((0b01) << GPIO_PUPDR_PUPDR8_Pos);
+  GPIOB->PUPDR |= ((0b01) << GPIO_PUPDR_PUPDR9_Pos);
+  
+  GPIOB->AFR[1] |= (4 << GPIO_AFRH_AFRH0_Pos);
+  GPIOB->AFR[1] |= (4 << GPIO_AFRH_AFRH1_Pos);
+}
+
 void EnableTim16_CH1_PB8() {
   GpioSetPinMode(GPIOB, GPIO_MODER_MODER8_Pos, GPIO_ALTERNATE_FUNCTION);
   GPIOB->AFR[1] &= ~(GPIO_AFRH_AFRH0);

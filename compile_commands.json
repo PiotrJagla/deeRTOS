@@ -6,6 +6,7 @@
       "-mthumb",
       "--specs=nano.specs",
       "-DSTM32F302Rx",
+      "-O0",
       "-Iexternal/CMSIS/CMSIS/Core/Include",
       "-Iexternal/CMSIS/Device/ST/STM32F3/Include",
       "-I./inc",
@@ -13,14 +14,14 @@
       "-Iexternal/stm32_graphics_display_drivers/Drivers/lcd/ili9341",
       "-Iexternal/stm32_graphics_display_drivers/Drivers/Fonts",
       "-Iexternal/stm32_graphics_display_drivers/Drivers/stm32f3xx",
-      "-Iexternal/stm32f3xx_hal_driver/Inc",
+      "-g",
       "-c",
       "-o",
-      "obj/main.o",
-      "src/main.c"
+      "obj/cmsis_util.o",
+      "src/cmsis_util.c"
     ],
-    "directory": "/home/piotrek/GitHub/deeRTOS/stm32_cortex-m4_RTOSport",
-    "file": "/home/piotrek/GitHub/deeRTOS/stm32_cortex-m4_RTOSport/src/main.c",
-    "output": "/home/piotrek/GitHub/deeRTOS/stm32_cortex-m4_RTOSport/obj/main.o"
+    "directory": "/home/piotrek/GitHub/deeRTOS",
+    "file": "/home/piotrek/GitHub/deeRTOS/src/cmsis_util.c",
+    "output": "/home/piotrek/GitHub/deeRTOS/obj/cmsis_util.o"
   }
 ]

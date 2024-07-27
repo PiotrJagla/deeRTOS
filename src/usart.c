@@ -20,7 +20,7 @@ void usart_init(USART_TypeDef* usart){
   GPIOA->AFR[0] &= ~(GPIO_AFRL_AFRL2 | GPIO_AFRL_AFRL3);
   GPIOA->AFR[0] |= (7<< GPIO_AFRL_AFRL2_Pos | 7<< GPIO_AFRL_AFRL3_Pos );
 
-  USART2->BRR = 69;
+  USART2->BRR = 69; //Baud rate is 9600
   USART2->CR1 |= USART_CR1_UE | USART_CR1_TE;
 
   USART2->TDR = 0;

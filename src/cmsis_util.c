@@ -6,18 +6,17 @@
 
 
 extern uint32_t ticks;
+#ifndef ISRTOS
+void systick_handler() {
+  ticks++;
+}
+#endif
 
-
-
-//void systick_handler() {
-//  ticks++;
-//}
 uint32_t tim6_ticks = 0;
 void tim6_dac_handler() {
   tim6_ticks++;
   printf("hwllo %d\r\n", tim6_ticks);
 }
-
 
 void delay_ms_tim6(uint32_t miliseconds) {
   TIM6->ARR = miliseconds + 1;

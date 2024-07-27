@@ -60,6 +60,7 @@ void OSSched() {
 
 
 uint32_t ticks = 0;
+#ifdef ISRTOS
 void systick_handler() {
   ++ticks;
 
@@ -101,3 +102,4 @@ void systick_handler() {
   __asm__("CPSIE I");
   __asm__("BX LR");
 }
+#endif
