@@ -33,6 +33,7 @@ void EnableTim16_CH1_PB8();
 void EnableADC_IN1_PA0();
 void EnableADC_IN2_PA1();
 void enable_i2c();
+void enable_spi();
 
 void GpioLD2EnableOutput();
 

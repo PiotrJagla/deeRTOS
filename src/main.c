@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <deeRTOS.h>
 #include <i2c.h>
+#include <spi.h>
 
 void CustomGpioInit();
 
@@ -42,6 +43,25 @@ void task3() {
   }
 }
 
+#define SSD1306_DISPLAYOFF 0xAE
+#define SSD1306_DISPLAYON  0xAF
+#define SSD1306_SETDISPLAYALLON 0xA5
+
+#define CS_BASE GPIOA
+#define CS_PIN 8
+
+#define DC_BASE GPIOB 
+#define DC_PIN 10
+
+#define RESET_BASE GPIOA
+#define RESET_PIN 9
+
+#define SPI_SCLK_BASE GPIOC 
+#define SPI_SCLK_PIN 10
+
+#define SPI_MOSI_BASE GPIOC
+#define SPI_MOSI_PIN 12
+
 
 int main(void) {
   SysTick_Config(CLOCK_FREQ/1000);
@@ -61,7 +81,7 @@ int main(void) {
 
 
   while(1) {
-    delay_ms(100);
+    delay_ms(2000);
     GpioTogglePin(GPIO_LD2_BASE, GPIO_LD2_PIN);
   }
 }
@@ -71,4 +91,7 @@ void CustomGpioInit() {
   GpioLD2EnableOutput();
   GpioSetPinMode(GPIOB, GPIO_MODER_MODER10_Pos, GPIO_OUTPUT);
   GpioSetPinMode(GPIOA, GPIO_MODER_MODER8_Pos, GPIO_OUTPUT);
+  GpioSetPinMode(CS_BASE, GPIO_MODER_MODER8_Pos,GPIO_OUTPUT);
+  GpioSetPinMode(DC_BASE, GPIO_MODER_MODER10_Pos, GPIO_OUTPUT);
+  GpioSetPinMode(RESET_BASE, GPIO_MODER_MODER9_Pos, GPIO_OUTPUT);
 }
