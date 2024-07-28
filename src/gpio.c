@@ -1,6 +1,25 @@
 #include "gpio.h"
 #include "stm32f302x8.h"
 
+uint8_t pin_to_moder[] = {
+  GPIO_MODER_MODER0_Pos,
+  GPIO_MODER_MODER1_Pos,
+  GPIO_MODER_MODER2_Pos,
+  GPIO_MODER_MODER3_Pos,
+  GPIO_MODER_MODER4_Pos,
+  GPIO_MODER_MODER5_Pos,
+  GPIO_MODER_MODER6_Pos,
+  GPIO_MODER_MODER7_Pos,
+  GPIO_MODER_MODER8_Pos,
+  GPIO_MODER_MODER9_Pos,
+  GPIO_MODER_MODER10_Pos,
+  GPIO_MODER_MODER11_Pos,
+  GPIO_MODER_MODER12_Pos,
+  GPIO_MODER_MODER13_Pos,
+  GPIO_MODER_MODER14_Pos,
+  GPIO_MODER_MODER15_Pos,
+};
+
 void GpioInit(){
   volatile uint32_t dummy;
   RCC->AHBENR |= (1<<RCC_AHBENR_GPIOAEN_Pos);
@@ -12,8 +31,8 @@ void GpioInit(){
   dummy = RCC->AHBENR;
 }
 
-void GpioSetPinMode(GPIO_TypeDef* gpiox, unsigned long gpioPin, uint8_t mode) {
-  gpiox->MODER |= (mode << gpioPin);
+void GpioSetPinMode(GPIO_TypeDef* gpiox, uint8_t gpioPin, uint8_t mode) {
+  gpiox->MODER |= (mode << pin_to_moder[gpioPin]);
 }
 
 void GpioTogglePin(GPIO_TypeDef* gpiox, uint8_t gpioPin) {

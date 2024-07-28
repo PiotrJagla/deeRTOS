@@ -5,7 +5,8 @@
 #include <gpio.h>
 
 
-extern uint32_t ticks;
+
+uint32_t ticks = 0;
 #ifndef ISRTOS
 void systick_handler() {
   ticks++;
@@ -14,16 +15,20 @@ void systick_handler() {
 
 uint32_t tim6_ticks = 0;
 void tim6_dac_handler() {
-  tim6_ticks++;
-  printf("hwllo %d\r\n", tim6_ticks);
+  if(TIM6->SR & TIM_SR_UIF) {
+    TIM6->SR  &= ~TIM_SR_UIF;
+    tim6_ticks++;
+  }
 }
 
 void delay_ms_tim6(uint32_t miliseconds) {
-  TIM6->ARR = miliseconds + 1;
-  TIM6->CNT = 0;
-  while(TIM6->CNT < miliseconds) {
-    __asm__ volatile("NOP");
+  uint32_t start = tim6_ticks;
+  uint32_t end= tim6_ticks + miliseconds;
+  while(end < start) {
+    while(tim6_ticks > start) {}
   }
+
+  while(tim6_ticks < end) {}
 }
 
 void delay_ms(uint32_t miliseconds){

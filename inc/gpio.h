@@ -21,7 +21,7 @@
 
 
 void GpioInit();
-void GpioSetPinMode(GPIO_TypeDef* gpiox, unsigned long gpioPin, uint8_t mode);
+void GpioSetPinMode(GPIO_TypeDef* gpiox, uint8_t gpioPin, uint8_t mode);
 void GpioTogglePin(GPIO_TypeDef* gpiox, uint8_t gpioPin);
 void GpioSetPin(GPIO_TypeDef* gpiox, uint8_t gpioPin);
 void GpioResetPin(GPIO_TypeDef* gpiox, uint8_t gpioPin);

@@ -59,11 +59,8 @@ void OSSched() {
 }
 
 
-uint32_t ticks = 0;
 #ifdef ISRTOS
 void systick_handler() {
-  ++ticks;
-
   __asm__("CPSID I");
   
   //Schedule next task

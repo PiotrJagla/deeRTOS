@@ -8,7 +8,7 @@ INC=-Iexternal/CMSIS/CMSIS/Core/Include -Iexternal/CMSIS/Device/ST/STM32F3/Inclu
 
 
 #if RTOS is used add -DISRTOS flag
-CFLAGS=-mcpu=cortex-m4 -mthumb --specs=nano.specs -DSTM32F302Rx -O0
+CFLAGS=-mcpu=cortex-m4 -mthumb --specs=nano.specs -DSTM32F302Rx -O0 -DISRTOS
 LINKER_FILE=linker_script.ld
 LD_FLAGS=-T $(LINKER_FILE) 
 
