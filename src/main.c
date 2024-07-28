@@ -58,7 +58,6 @@ int main(void) {
   TimEnebaleUpdateInterrupts(TIM6, TIM6_DAC_IRQn);
   TimStart(TIM6);
 
-
   OSThreadStart(&tcb_task1, &task1, stack_task1, sizeof(stack_task1));
   OSThreadStart(&tcb_task2, &task2, stack_task2, sizeof(stack_task2));
   OSThreadStart(&tcb_task3, &task3, stack_task3, sizeof(stack_task3));
