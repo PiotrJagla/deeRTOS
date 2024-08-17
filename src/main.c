@@ -58,9 +58,9 @@ int main(void) {
   OSInit();
 
 
-  OSThreadStart(&tcb_task1, &task1, stack_task1, sizeof(stack_task1));
-  OSThreadStart(&tcb_task2, &task2, stack_task2, sizeof(stack_task2));
-  OSThreadStart(&tcb_task3, &task3, stack_task3, sizeof(stack_task3));
+  OSThreadStart(&tcb_task1, 6, &task1, stack_task1, sizeof(stack_task1));
+  OSThreadStart(&tcb_task2, 4, &task2, stack_task2, sizeof(stack_task2));
+  OSThreadStart(&tcb_task3, 1, &task3, stack_task3, sizeof(stack_task3));
 
   __enable_irq();
 

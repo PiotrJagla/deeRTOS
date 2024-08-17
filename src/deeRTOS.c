@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include "deeRTOS.h"
 #include "stm32f3xx.h"
 
@@ -6,9 +7,10 @@
 OSThread* volatile tcb_curr;
 OSThread* volatile tcb_next;
 OSThread* OS_threads[MAX_THREADS+1];
-uint8_t OS_threadNum = 0;
-uint8_t OS_currThreadIdx = -1;
 uint32_t OS_threadsReady = 0;
+uint32_t OS_delayedSet;
+
+#define LOG2(x) (32 - __builtin_clz(x))
 
 
 uint32_t stack_idleThread[20];
@@ -20,7 +22,7 @@ void idle_thread_loop() {
 }
 
 int OSInit() {
-  OSThreadStart(&idleThread, &idle_thread_loop, stack_idleThread, sizeof(stack_idleThread));
+  OSThreadStart(&idleThread, 0, &idle_thread_loop, stack_idleThread, sizeof(stack_idleThread));
   tcb_curr = (void*)0;
   tcb_next = (void*)0;
 
@@ -35,26 +37,37 @@ void OS_start() {
 }
 
 void OS_tick() {
-  for(int i = 1 ; i < OS_threadNum ; ++i) {
-    if(OS_threads[i]->timeout != 0) {
-      --OS_threads[i]->timeout;
-      if(OS_threads[i]->timeout == 0) {
-        OS_threadsReady |= (1 << (i-1));
-      }
+  uint32_t workingSet = OS_delayedSet;
+  while(workingSet != 0) {
+    OSThread* t = OS_threads[LOG2(workingSet)];
+
+    --t->timeout;
+
+    uint32_t bit = (1 << (t->priority - 1));
+    if(t->timeout == 0) {
+      OS_threadsReady |= bit;
+      OS_delayedSet &= ~bit;
     }
+    workingSet &= ~bit;
   }
 }
 
 void OS_delay(uint32_t miliseconds){
   __disable_irq();
   tcb_curr->timeout = miliseconds;
-  OS_threadsReady &= ~(1<< (OS_currThreadIdx - 1));
+  uint32_t bit = (1 << (tcb_curr->priority - 1));
+  OS_threadsReady &= ~bit;
+  OS_delayedSet |= bit;
   OSSched();
   __enable_irq();
 }
 
 
-int OSThreadStart(OSThread* me, OSThreadHandler threadHandler, void* stkSto, uint32_t stkSize) {
+int OSThreadStart(OSThread* me, uint8_t priority, OSThreadHandler threadHandler, void* stkSto, uint32_t stkSize) {
+
+  if(OS_threads[priority] != (OSThread*)0) {
+    return 1;
+  }
 
   uint32_t* sp = (uint32_t*)((((uint32_t)stkSto + stkSize)/8)*8);
 
@@ -78,6 +91,7 @@ int OSThreadStart(OSThread* me, OSThreadHandler threadHandler, void* stkSto, uin
   *(--sp) = 0x00000004U; // R4
   
   me->sp = sp;
+  me->priority = priority;
 
   uint32_t* stk_limit = (uint32_t*)(((((uint32_t)stkSto-1U)/8)+1U)*8);
 
@@ -85,32 +99,23 @@ int OSThreadStart(OSThread* me, OSThreadHandler threadHandler, void* stkSto, uin
     *sp = 0xDEADBEEF;
   }
 
-  if(OS_threadNum == MAX_THREADS) {
-    return 1;
+  OS_threads[priority] = me;
+  if(priority > 0) {
+    OS_threadsReady |= (1 << (priority - 1));
   }
-
-  OS_threads[OS_threadNum] = me;
-  if(OS_threadNum > 0) {
-    OS_threadsReady |= (1 << (OS_threadNum - 1));
-  }
-
-  OS_threadNum++;
   return 0;
 }
 
 void OSSched() {
   if(OS_threadsReady == 0U) {
-    OS_currThreadIdx = 0U;
+    tcb_next = OS_threads[0];
   } else {
-    do {
-      ++OS_currThreadIdx;
-      if(OS_currThreadIdx == OS_threadNum) {
-        OS_currThreadIdx = 1;
-      }
-    } while (!(OS_threadsReady & (1 << (OS_currThreadIdx - 1))));
+    tcb_next = OS_threads[LOG2(OS_threadsReady)];
   }
-  tcb_next = OS_threads[OS_currThreadIdx];
-  *(uint32_t*)0xE000ED04 |= (1 << 28);
+
+  if(tcb_next != tcb_curr) {
+    *(uint32_t*)0xE000ED04 |= (1 << 28);
+  }
 }
 
 
