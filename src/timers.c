@@ -34,9 +34,6 @@ void TimDisableUpdateInterrupts(TIM_TypeDef* timx, IRQn_Type interrupt) {
   NVIC_DisableIRQ(interrupt);
 }
 
-
-
-
 void TimStart(TIM_TypeDef* timx) {
   timx->CR1 |= (1<<TIM_CR1_CEN_Pos);
   while(timx->SR & TIM_SR_UIF_Pos) {}

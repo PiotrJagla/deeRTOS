@@ -41,22 +41,21 @@ void task2() {
 uint32_t stack_task3[STACK_SIZE_TASK3];
 OSThread tcb_task3;
 void task3() {
-
-
   while(1) {
-    GpioTogglePin(LED3_BASE, LED3_PIN);
+    //GpioTogglePin(LED3_BASE, LED3_PIN);
     delay_ms_tim6(500);
   }
 }
 
 int main(void) {
-  SysTick_Config(CLOCK_FREQ/1000);
+  system_init();
   usart_init(USART2);
   GpioInit();
   CustomGpioInit();
   TimInit(TIM6, CLOCK_FREQ/100000-1, CLOCK_FREQ/80000-1);
   TimEnebaleUpdateInterrupts(TIM6, TIM6_DAC_IRQn);
   TimStart(TIM6);
+
 
   OSThreadStart(&tcb_task1, &task1, stack_task1, sizeof(stack_task1));
   OSThreadStart(&tcb_task2, &task2, stack_task2, sizeof(stack_task2));
@@ -65,6 +64,7 @@ int main(void) {
 
 
   __enable_irq();
+  GpioResetPin(LED3_BASE, LED3_PIN);
 
   while(1) {
     delay_ms(1000);

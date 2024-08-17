@@ -24,11 +24,10 @@ void tim6_dac_handler() {
 void delay_ms_tim6(uint32_t miliseconds) {
   uint32_t start = tim6_ticks;
   uint32_t end= tim6_ticks + miliseconds;
-  while(end < start) {
-    while(tim6_ticks > start) {}
+  if(end < start) {
+    while(tim6_ticks > start);
   }
-
-  while(tim6_ticks < end) {}
+  while(tim6_ticks < end);
 }
 
 void delay_ms(uint32_t miliseconds){
@@ -39,4 +38,11 @@ void delay_ms(uint32_t miliseconds){
   }
 
   while(ticks < end);
+}
+
+void system_init(void) {
+  SysTick_Config(CLOCK_FREQ/1000);
+
+  NVIC_EnableIRQ(PendSV_IRQn);
+  NVIC_SetPriority(SysTick_IRQn, 0U);
 }

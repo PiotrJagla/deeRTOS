@@ -1,4 +1,5 @@
 #include "deeRTOS.h"
+#include "stm32f3xx.h"
 
 
 #define MAX_THREADS 32
@@ -11,6 +12,8 @@ uint8_t OS_currThread = -1;
 int OSInit() {
   tcb_curr = (void*)0;
   tcb_next = (void*)0;
+
+  *(uint32_t volatile *)0xE000ED20 |= (0xFF << 16); //Set pendSV priority to lowest
   return 0;
 }
 
@@ -56,25 +59,30 @@ int OSThreadStart(OSThread* me, OSThreadHandler threadHandler, void* stkSto, uin
 
 void OSSched() {
   tcb_next = OS_threads[++OS_currThread % OS_threadNum];
+  *(uint32_t*)0xE000ED04 |= (1 << 28);
 }
 
 
 #ifdef ISRTOS
 void systick_handler() {
+  __disable_irq();
+  OSSched();
+  __enable_irq();
+}
+
+void pendsv_handler(void) {
   __asm__("CPSID I");
-  
-  //Schedule next task
-  tcb_next = OS_threads[++OS_currThread % OS_threadNum];
 
-  //Switch context
+  //gcc is pushing this register on stack so i have to pop it
+  //but when i call a function from this interrupt gcc is pushing r7 with lr registers
+  __asm__("POP {r7}");
 
-  //Context switch
+  //Check if current task is null
   __asm__("LDR r1, =tcb_curr");
   __asm__("LDR r1, [r1, #0x00]");
   __asm__("CBZ r1, Context_Restore");
 
   //Save current stack context
-  __asm__("POP {r7}"); //gcc is pushing this register on stack so i have to pop it
   __asm__("PUSH {r4-r11}");
   __asm__("LDR r1, =tcb_curr");
   __asm__("LDR r1, [r1, #0x00]");
@@ -86,7 +94,6 @@ void systick_handler() {
   __asm__("LDR r1, =tcb_next");
   __asm__("LDR r1, [r1, #0x00]");
   __asm__("LDR sp, [r1,#0x00]");
-  
 
   // curr stack pointer = next stack pointer
   __asm__("LDR r1, =tcb_next");

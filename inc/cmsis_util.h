@@ -7,5 +7,6 @@
 
 void delay_ms(uint32_t miliseconds);
 void delay_ms_tim6(uint32_t miliseconds);
+void system_init(void);
 
 #endif
