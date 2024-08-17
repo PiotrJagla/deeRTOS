@@ -7,15 +7,52 @@ OSThread* volatile tcb_curr;
 OSThread* volatile tcb_next;
 OSThread* OS_threads[MAX_THREADS+1];
 uint8_t OS_threadNum = 0;
-uint8_t OS_currThread = -1;
+uint8_t OS_currThreadIdx = -1;
+uint32_t OS_threadsReady = 0;
+
+
+uint32_t stack_idleThread[20];
+OSThread idleThread;
+void idle_thread_loop() {
+  while(1) {
+    __asm__("nop");
+  }
+}
 
 int OSInit() {
+  OSThreadStart(&idleThread, &idle_thread_loop, stack_idleThread, sizeof(stack_idleThread));
   tcb_curr = (void*)0;
   tcb_next = (void*)0;
 
   *(uint32_t volatile *)0xE000ED20 |= (0xFF << 16); //Set pendSV priority to lowest
   return 0;
 }
+
+void OS_start() {
+  __disable_irq();
+  OSSched();
+  __enable_irq();
+}
+
+void OS_tick() {
+  for(int i = 1 ; i < OS_threadNum ; ++i) {
+    if(OS_threads[i]->timeout != 0) {
+      --OS_threads[i]->timeout;
+      if(OS_threads[i]->timeout == 0) {
+        OS_threadsReady |= (1 << (i-1));
+      }
+    }
+  }
+}
+
+void OS_delay(uint32_t miliseconds){
+  __disable_irq();
+  tcb_curr->timeout = miliseconds;
+  OS_threadsReady &= ~(1<< (OS_currThreadIdx - 1));
+  OSSched();
+  __enable_irq();
+}
+
 
 int OSThreadStart(OSThread* me, OSThreadHandler threadHandler, void* stkSto, uint32_t stkSize) {
 
@@ -29,7 +66,7 @@ int OSThreadStart(OSThread* me, OSThreadHandler threadHandler, void* stkSto, uin
   *(--sp) = 0x00000002U; // R2
   *(--sp) = 0x00000001U; // R1
   *(--sp) = 0x00000000U; // R0
-  
+
   // Save additional registrs
   *(--sp) = 0x0000000BU; // R11
   *(--sp) = 0x0000000AU; // R10
@@ -48,23 +85,38 @@ int OSThreadStart(OSThread* me, OSThreadHandler threadHandler, void* stkSto, uin
     *sp = 0xDEADBEEF;
   }
 
-  if(OS_threadNum < MAX_THREADS) {
-    OS_threads[OS_threadNum++] = me;
-    return 0;
-  } else {
+  if(OS_threadNum == MAX_THREADS) {
     return 1;
   }
 
+  OS_threads[OS_threadNum] = me;
+  if(OS_threadNum > 0) {
+    OS_threadsReady |= (1 << (OS_threadNum - 1));
+  }
+
+  OS_threadNum++;
+  return 0;
 }
 
 void OSSched() {
-  tcb_next = OS_threads[++OS_currThread % OS_threadNum];
+  if(OS_threadsReady == 0U) {
+    OS_currThreadIdx = 0U;
+  } else {
+    do {
+      ++OS_currThreadIdx;
+      if(OS_currThreadIdx == OS_threadNum) {
+        OS_currThreadIdx = 1;
+      }
+    } while (!(OS_threadsReady & (1 << (OS_currThreadIdx - 1))));
+  }
+  tcb_next = OS_threads[OS_currThreadIdx];
   *(uint32_t*)0xE000ED04 |= (1 << 28);
 }
 
 
 #ifdef ISRTOS
 void systick_handler() {
+  OS_tick();
   __disable_irq();
   OSSched();
   __enable_irq();
@@ -73,7 +125,7 @@ void systick_handler() {
 void pendsv_handler(void) {
   __asm__("CPSID I");
 
-  //gcc is pushing this register on stack so i have to pop it
+  //arm-none-eabi-gcc is pushing this register on stack so i have to pop it
   //but when i call a function from this interrupt gcc is pushing r7 with lr registers
   __asm__("POP {r7}");
 
@@ -107,3 +159,7 @@ void pendsv_handler(void) {
   __asm__("BX LR");
 }
 #endif
+
+
+
+
