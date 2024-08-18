@@ -11,9 +11,8 @@ typedef struct {
 
 typedef void(*OSThreadHandler)();
 
-int OSThreadStart(OSThread* me, uint8_t priority, OSThreadHandler threadHandler, void* stkSto, uint32_t stkSize);
-int OSInit();
-void OSSched();
+int OS_create_thread(OSThread* me, uint8_t priority, OSThreadHandler threadHandler, void* stkSto, uint32_t stkSize);
+int OS_init();
 void OS_start();
 void OS_delay(uint32_t miliseconds);
 

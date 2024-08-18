@@ -23,7 +23,8 @@ OSThread tcb_task1;
 void task1() {
   while(1) {
     GpioTogglePin(LED1_BASE, LED1_PIN);
-    OS_delay(4000);
+    for(int i = 0 ; i < 100000 ; i++) {}
+    OS_delay(1000);
   }
 }
 
@@ -33,6 +34,7 @@ OSThread tcb_task2;
 void task2() {
   while(1) {
     GpioTogglePin(LED2_BASE, LED2_PIN);
+    for(int i = 0 ; i < 50000 ; i++) {}
     OS_delay(2000);
   }
 }
@@ -43,7 +45,8 @@ OSThread tcb_task3;
 void task3() {
   while(1) {
     GpioTogglePin(LED3_BASE, LED3_PIN);
-    OS_delay(1000);
+    for(int i = 0 ; i < 25000 ; i++) {}
+    OS_delay(4000);
   }
 }
 
@@ -55,12 +58,12 @@ int main(void) {
   TimInit(TIM6, CLOCK_FREQ/100000-1, CLOCK_FREQ/80000-1);
   TimEnebaleUpdateInterrupts(TIM6, TIM6_DAC_IRQn);
   TimStart(TIM6);
-  OSInit();
+  OS_init();
 
 
-  OSThreadStart(&tcb_task1, 6, &task1, stack_task1, sizeof(stack_task1));
-  OSThreadStart(&tcb_task2, 4, &task2, stack_task2, sizeof(stack_task2));
-  OSThreadStart(&tcb_task3, 1, &task3, stack_task3, sizeof(stack_task3));
+  OS_create_thread(&tcb_task1, 1, &task1, stack_task1, sizeof(stack_task1));
+  OS_create_thread(&tcb_task2, 2, &task2, stack_task2, sizeof(stack_task2));
+  OS_create_thread(&tcb_task3, 3, &task3, stack_task3, sizeof(stack_task3));
 
   __enable_irq();
 

@@ -1,30 +1,29 @@
-#include <stdint.h>
 #include "deeRTOS.h"
 #include "stm32f3xx.h"
 
+void OS_sched();
 
 #define MAX_THREADS 32
-OSThread* volatile tcb_curr;
-OSThread* volatile tcb_next;
+OSThread* volatile OS_curr_task;
+OSThread* volatile OS_next_task;
 OSThread* OS_threads[MAX_THREADS+1];
-uint32_t OS_threadsReady = 0;
-uint32_t OS_delayedSet;
-
-#define LOG2(x) (32 - __builtin_clz(x))
+uint8_t OS_threads_num = 0;
+uint8_t OS_curr_thread_idx = -1;
+uint32_t OS_thread_ready_msk = 0;
 
 
 uint32_t stack_idleThread[20];
 OSThread idleThread;
-void idle_thread_loop() {
+void OS_idle() {
   while(1) {
     __asm__("nop");
   }
 }
 
-int OSInit() {
-  OSThreadStart(&idleThread, 0, &idle_thread_loop, stack_idleThread, sizeof(stack_idleThread));
-  tcb_curr = (void*)0;
-  tcb_next = (void*)0;
+int OS_init() {
+  OS_create_thread(&idleThread, 0, &OS_idle, stack_idleThread, sizeof(stack_idleThread));
+  OS_curr_task = (void*)0;
+  OS_next_task = (void*)0;
 
   *(uint32_t volatile *)0xE000ED20 |= (0xFF << 16); //Set pendSV priority to lowest
   return 0;
@@ -32,40 +31,34 @@ int OSInit() {
 
 void OS_start() {
   __disable_irq();
-  OSSched();
+  OS_sched();
   __enable_irq();
 }
 
-void OS_tick() {
-  uint32_t workingSet = OS_delayedSet;
-  while(workingSet != 0) {
-    OSThread* t = OS_threads[LOG2(workingSet)];
-
-    --t->timeout;
-
-    uint32_t bit = (1 << (t->priority - 1));
-    if(t->timeout == 0) {
-      OS_threadsReady |= bit;
-      OS_delayedSet &= ~bit;
-    }
-    workingSet &= ~bit;
-  }
-}
 
 void OS_delay(uint32_t miliseconds){
   __disable_irq();
-  tcb_curr->timeout = miliseconds;
-  uint32_t bit = (1 << (tcb_curr->priority - 1));
-  OS_threadsReady &= ~bit;
-  OS_delayedSet |= bit;
-  OSSched();
+  OS_curr_task->timeout = miliseconds;
+  OS_thread_ready_msk &= ~(1<< (OS_curr_thread_idx - 1));
+  OS_sched();
   __enable_irq();
 }
 
 
-int OSThreadStart(OSThread* me, uint8_t priority, OSThreadHandler threadHandler, void* stkSto, uint32_t stkSize) {
+void insert_sorted(OSThread* t) {
+  OS_threads[OS_threads_num] = t;
 
-  if(OS_threads[priority] != (OSThread*)0) {
+  for(int i = OS_threads_num ; i > 1 ; --i) {
+    if(OS_threads[i]->priority > OS_threads[i-1]->priority) {
+      OSThread* tmp = OS_threads[i];
+      OS_threads[i] = OS_threads[i-1];
+      OS_threads[i-1] = tmp;
+    }
+  }
+}
+int OS_create_thread(OSThread* me, uint8_t priority, OSThreadHandler threadHandler, void* stkSto, uint32_t stkSize) {
+
+  if(OS_threads_num == MAX_THREADS) {
     return 1;
   }
 
@@ -99,23 +92,42 @@ int OSThreadStart(OSThread* me, uint8_t priority, OSThreadHandler threadHandler,
     *sp = 0xDEADBEEF;
   }
 
-  OS_threads[priority] = me;
-  if(priority > 0) {
-    OS_threadsReady |= (1 << (priority - 1));
+  //OS_threads[OS_threads_num] = me;
+  insert_sorted(me);
+  if(OS_threads_num > 0) {
+    OS_thread_ready_msk |= (1 << (OS_threads_num - 1));
   }
+
+  OS_threads_num++;
   return 0;
 }
 
-void OSSched() {
-  if(OS_threadsReady == 0U) {
-    tcb_next = OS_threads[0];
-  } else {
-    tcb_next = OS_threads[LOG2(OS_threadsReady)];
+void OS_tick() {
+  for(int i = 1 ; i < OS_threads_num ; ++i) {
+    if(OS_threads[i]->timeout != 0) {
+      --OS_threads[i]->timeout;
+      if(OS_threads[i]->timeout == 0) {
+        OS_thread_ready_msk |= (1 << (i-1));
+      }
+    }
   }
+}
 
-  if(tcb_next != tcb_curr) {
-    *(uint32_t*)0xE000ED04 |= (1 << 28);
+void OS_sched() {
+  int next_task_idx = 0;
+  if(OS_thread_ready_msk == 0) {
+    next_task_idx = 0;
+  } else {
+    do {
+      ++next_task_idx;
+      if(next_task_idx == OS_threads_num) {
+        next_task_idx = 1;
+      }
+    } while (!(OS_thread_ready_msk & (1 << (next_task_idx - 1))));
   }
+  OS_next_task = OS_threads[next_task_idx];
+  OS_curr_thread_idx = next_task_idx;
+  *(uint32_t*)0xE000ED04 |= (1 << 28);
 }
 
 
@@ -123,7 +135,7 @@ void OSSched() {
 void systick_handler() {
   OS_tick();
   __disable_irq();
-  OSSched();
+  OS_sched();
   __enable_irq();
 }
 
@@ -135,28 +147,26 @@ void pendsv_handler(void) {
   __asm__("POP {r7}");
 
   //Check if current task is null
-  __asm__("LDR r1, =tcb_curr");
-  __asm__("LDR r1, [r1, #0x00]");
+  __asm__("LDR r1, =OS_curr_task");
+  __asm__("LDR r1, [r1]");
   __asm__("CBZ r1, Context_Restore");
 
   //Save current stack context
   __asm__("PUSH {r4-r11}");
-  __asm__("LDR r1, =tcb_curr");
-  __asm__("LDR r1, [r1, #0x00]");
-  __asm__("STR sp, [r1,#0x00]");
+  __asm__("STR sp, [r1]"); // OS_curr_task is already in r1
 
   //Restore next task context
   __asm__("Context_Restore:");
   // sp = next task stack pointer
-  __asm__("LDR r1, =tcb_next");
-  __asm__("LDR r1, [r1, #0x00]");
-  __asm__("LDR sp, [r1,#0x00]");
+  __asm__("LDR r1, =OS_next_task");
+  __asm__("LDR r1, [r1]");
+  __asm__("LDR sp, [r1]");
 
   // curr stack pointer = next stack pointer
-  __asm__("LDR r1, =tcb_next");
-  __asm__("LDR r1, [r1, #0x00]");
-  __asm__("LDR r2, =tcb_curr");
-  __asm__("STR r1, [r2, #0x00]");
+  __asm__("LDR r1, =OS_next_task");
+  __asm__("LDR r1, [r1]");
+  __asm__("LDR r2, =OS_curr_task");
+  __asm__("STR r1, [r2]");
 
   __asm__("POP {r4-r11}");
 
@@ -164,6 +174,7 @@ void pendsv_handler(void) {
   __asm__("BX LR");
 }
 #endif
+
 
 
 
