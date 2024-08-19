@@ -4,15 +4,18 @@
 void OS_sched();
 
 #define MAX_THREADS 32
+#define PRIORITIES 32
 OSThread* volatile OS_curr_task;
 OSThread* volatile OS_next_task;
 OSThread* OS_threads[MAX_THREADS+1];
+uint8_t OS_priority_threads_num[PRIORITIES] = {0};
+uint8_t OS_priority_curr_thread_idx[PRIORITIES] = {0};
 uint8_t OS_threads_num = 0;
 uint8_t OS_curr_thread_idx = -1;
 uint32_t OS_thread_ready_msk = 0;
 
 
-uint32_t stack_idleThread[20];
+uint32_t stack_idleThread[50];
 OSThread idleThread;
 void OS_idle() {
   while(1) {
@@ -21,7 +24,7 @@ void OS_idle() {
 }
 
 int OS_init() {
-  OS_create_thread(&idleThread, 0, &OS_idle, stack_idleThread, sizeof(stack_idleThread));
+  OS_create_thread(&idleThread, 30, &OS_idle, stack_idleThread, sizeof(stack_idleThread));
   OS_curr_task = (void*)0;
   OS_next_task = (void*)0;
 
@@ -30,6 +33,9 @@ int OS_init() {
 }
 
 void OS_start() {
+  for(int i = 0 ; i < OS_threads_num ; ++i) {
+    OS_thread_ready_msk |= (1<<i);
+  }
   __disable_irq();
   OS_sched();
   __enable_irq();
@@ -39,7 +45,7 @@ void OS_start() {
 void OS_delay(uint32_t miliseconds){
   __disable_irq();
   OS_curr_task->timeout = miliseconds;
-  OS_thread_ready_msk &= ~(1<< (OS_curr_thread_idx - 1));
+  OS_thread_ready_msk &= ~(1<< OS_curr_thread_idx);
   OS_sched();
   __enable_irq();
 }
@@ -48,8 +54,8 @@ void OS_delay(uint32_t miliseconds){
 void insert_sorted(OSThread* t) {
   OS_threads[OS_threads_num] = t;
 
-  for(int i = OS_threads_num ; i > 1 ; --i) {
-    if(OS_threads[i]->priority > OS_threads[i-1]->priority) {
+  for(int i = OS_threads_num ; i > 0 ; --i) {
+    if(OS_threads[i]->priority < OS_threads[i-1]->priority) {
       OSThread* tmp = OS_threads[i];
       OS_threads[i] = OS_threads[i-1];
       OS_threads[i-1] = tmp;
@@ -85,6 +91,7 @@ int OS_create_thread(OSThread* me, uint8_t priority, OSThreadHandler threadHandl
   
   me->sp = sp;
   me->priority = priority;
+  OS_priority_threads_num[priority]++;
 
   uint32_t* stk_limit = (uint32_t*)(((((uint32_t)stkSto-1U)/8)+1U)*8);
 
@@ -94,20 +101,20 @@ int OS_create_thread(OSThread* me, uint8_t priority, OSThreadHandler threadHandl
 
   //OS_threads[OS_threads_num] = me;
   insert_sorted(me);
-  if(OS_threads_num > 0) {
-    OS_thread_ready_msk |= (1 << (OS_threads_num - 1));
-  }
+  //if(OS_threads_num > 0) {
+  //  OS_thread_ready_msk |= (1 << (OS_threads_num - 1));
+  //}
 
   OS_threads_num++;
   return 0;
 }
 
 void OS_tick() {
-  for(int i = 1 ; i < OS_threads_num ; ++i) {
+  for(int i = 0 ; i < OS_threads_num -1 ; ++i) {
     if(OS_threads[i]->timeout != 0) {
       --OS_threads[i]->timeout;
       if(OS_threads[i]->timeout == 0) {
-        OS_thread_ready_msk |= (1 << (i-1));
+        OS_thread_ready_msk |= (1 << i);
       }
     }
   }
@@ -115,15 +122,22 @@ void OS_tick() {
 
 void OS_sched() {
   int next_task_idx = 0;
-  if(OS_thread_ready_msk == 0) {
-    next_task_idx = 0;
-  } else {
-    do {
-      ++next_task_idx;
-      if(next_task_idx == OS_threads_num) {
-        next_task_idx = 1;
-      }
-    } while (!(OS_thread_ready_msk & (1 << (next_task_idx - 1))));
+  int curr_priority = -1;
+  int curr_priority_offset = -1;
+  for(int i = 0 ; i < OS_threads_num ; ++i) {
+    if(OS_threads[i]->priority != curr_priority) {
+      curr_priority = OS_threads[i]->priority;
+      curr_priority_offset = i;
+    }
+    int curr_prio_idx = OS_priority_curr_thread_idx[curr_priority];
+    int curr_task_idx = curr_prio_idx + curr_priority_offset;
+    if(++curr_prio_idx == OS_priority_threads_num[curr_priority]) {
+      OS_priority_curr_thread_idx[curr_priority] = 0;
+    }
+    if(OS_thread_ready_msk & (1<<curr_task_idx)) {
+      next_task_idx = curr_task_idx;
+      break;
+    }
   }
   OS_next_task = OS_threads[next_task_idx];
   OS_curr_thread_idx = next_task_idx;

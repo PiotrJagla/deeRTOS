@@ -23,7 +23,6 @@ OSThread tcb_task1;
 void task1() {
   while(1) {
     GpioTogglePin(LED1_BASE, LED1_PIN);
-    for(int i = 0 ; i < 100000 ; i++) {}
     OS_delay(1000);
   }
 }
@@ -34,7 +33,6 @@ OSThread tcb_task2;
 void task2() {
   while(1) {
     GpioTogglePin(LED2_BASE, LED2_PIN);
-    for(int i = 0 ; i < 50000 ; i++) {}
     OS_delay(2000);
   }
 }
@@ -45,7 +43,6 @@ OSThread tcb_task3;
 void task3() {
   while(1) {
     GpioTogglePin(LED3_BASE, LED3_PIN);
-    for(int i = 0 ; i < 25000 ; i++) {}
     OS_delay(4000);
   }
 }
