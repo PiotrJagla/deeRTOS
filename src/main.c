@@ -60,7 +60,7 @@ int main(void) {
 
   OS_create_thread(&tcb_task1, 1, &task1, stack_task1, sizeof(stack_task1));
   OS_create_thread(&tcb_task2, 2, &task2, stack_task2, sizeof(stack_task2));
-  OS_create_thread(&tcb_task3, 3, &task3, stack_task3, sizeof(stack_task3));
+  OS_create_thread(&tcb_task3, 2, &task3, stack_task3, sizeof(stack_task3));
 
   __enable_irq();
 

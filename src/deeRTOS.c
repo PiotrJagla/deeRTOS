@@ -8,8 +8,8 @@ void OS_sched();
 OSThread* volatile OS_curr_task;
 OSThread* volatile OS_next_task;
 OSThread* OS_threads[MAX_THREADS+1];
-uint8_t OS_priority_threads_num[PRIORITIES] = {0};
-uint8_t OS_priority_curr_thread_idx[PRIORITIES] = {0};
+uint8_t OS_prio_threads_num[PRIORITIES] = {0};
+uint8_t OS_curr_prio_idx[PRIORITIES] = {0};
 uint8_t OS_threads_num = 0;
 uint8_t OS_curr_thread_idx = -1;
 uint32_t OS_thread_ready_msk = 0;
@@ -91,7 +91,7 @@ int OS_create_thread(OSThread* me, uint8_t priority, OSThreadHandler threadHandl
   
   me->sp = sp;
   me->priority = priority;
-  OS_priority_threads_num[priority]++;
+  OS_prio_threads_num[priority]++;
 
   uint32_t* stk_limit = (uint32_t*)(((((uint32_t)stkSto-1U)/8)+1U)*8);
 
@@ -122,26 +122,24 @@ void OS_tick() {
 
 void OS_sched() {
   int next_task_idx = 0;
-  int curr_priority = -1;
-  int curr_priority_offset = -1;
+  int curr_prio = -1;
+  int curr_prio_offset = -1;
   for(int i = 0 ; i < OS_threads_num ; ++i) {
-    if(OS_threads[i]->priority != curr_priority) {
-      curr_priority = OS_threads[i]->priority;
-      curr_priority_offset = i;
+    if(OS_threads[i]->priority != curr_prio) {
+      curr_prio = OS_threads[i]->priority;
+      curr_prio_offset = i;
     }
-    int curr_prio_idx = OS_priority_curr_thread_idx[curr_priority];
-    int curr_task_idx = curr_prio_idx + curr_priority_offset;
-    if(++curr_prio_idx == OS_priority_threads_num[curr_priority]) {
-      OS_priority_curr_thread_idx[curr_priority] = 0;
-    }
-    if(OS_thread_ready_msk & (1<<curr_task_idx)) {
-      next_task_idx = curr_task_idx;
+    int curr_prio_idx = OS_curr_prio_idx[curr_prio];
+    int task_idx = curr_prio_offset + curr_prio_idx;
+    OS_curr_prio_idx[curr_prio] = (++curr_prio_idx)%OS_prio_threads_num[curr_prio];
+    if(OS_thread_ready_msk & (1<<task_idx)) {
+      next_task_idx = task_idx;
       break;
     }
   }
   OS_next_task = OS_threads[next_task_idx];
   OS_curr_thread_idx = next_task_idx;
-  *(uint32_t*)0xE000ED04 |= (1 << 28);
+  *(uint32_t*)0xE000ED04 |= (1 << 28); //trigger pendSV
 }
 
 
