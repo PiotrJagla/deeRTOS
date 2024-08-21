@@ -99,11 +99,7 @@ int OS_create_thread(OSThread* me, uint8_t priority, OSThreadHandler threadHandl
     *sp = 0xDEADBEEF;
   }
 
-  //OS_threads[OS_threads_num] = me;
   insert_sorted(me);
-  //if(OS_threads_num > 0) {
-  //  OS_thread_ready_msk |= (1 << (OS_threads_num - 1));
-  //}
 
   OS_threads_num++;
   return 0;

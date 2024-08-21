@@ -7,6 +7,7 @@
 #include <timers.h>
 #include <stdint.h>
 #include <deeRTOS.h>
+#include <queue.h>
 
 #define LED1_BASE GPIOA
 #define LED1_PIN 8
@@ -17,13 +18,19 @@
 
 void CustomGpioInit();
 
+OS_queue_handle queue_int;
+void* buff[10] = {0};
+
 #define STACK_SIZE_TASK1 50
 uint32_t stack_task1[STACK_SIZE_TASK1];
 OSThread tcb_task1;
 void task1() {
   while(1) {
     GpioTogglePin(LED1_BASE, LED1_PIN);
-    OS_delay(1000);
+    OS_delay(100);
+    int element = (uint32_t)OS_queue_pend(queue_int);
+
+    if(element)
   }
 }
 
@@ -44,8 +51,10 @@ void task3() {
   while(1) {
     GpioTogglePin(LED3_BASE, LED3_PIN);
     OS_delay(4000);
+    OS_queue_post(queue_int, (uint32_t)10);
   }
 }
+
 
 int main(void) {
   system_init();
@@ -61,6 +70,7 @@ int main(void) {
   OS_create_thread(&tcb_task1, 1, &task1, stack_task1, sizeof(stack_task1));
   OS_create_thread(&tcb_task2, 2, &task2, stack_task2, sizeof(stack_task2));
   OS_create_thread(&tcb_task3, 2, &task3, stack_task3, sizeof(stack_task3));
+  queue_int = OS_queue_create(buff, 10);
 
   __enable_irq();
 
