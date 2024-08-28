@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <deeRTOS.h>
 #include <queue.h>
+#include <stddef.h>
 
 #define LED1_BASE GPIOA
 #define LED1_PIN 8
@@ -19,18 +20,37 @@
 void CustomGpioInit();
 
 OS_queue_handle queue_int;
-void* buff[10] = {0};
+#define QUEUE_INT_SIZE 5
+void* buff[QUEUE_INT_SIZE] = {0};
 
 #define STACK_SIZE_TASK1 50
 uint32_t stack_task1[STACK_SIZE_TASK1];
 OSThread tcb_task1;
 void task1() {
+  uint32_t* element = NULL; 
+  uint8_t next = 1;
   while(1) {
-    GpioTogglePin(LED1_BASE, LED1_PIN);
-    OS_delay(100);
-    int element = (uint32_t)OS_queue_pend(queue_int);
-
-    if(element)
+    //GpioTogglePin(LED1_BASE, LED1_PIN);
+    OS_delay(200);
+    element = (uint32_t*)OS_queue_pend(&queue_int);
+    if(element == NULL) {
+      GpioWritePin(LED1_BASE, LED1_PIN, 0);
+      GpioWritePin(LED2_BASE, LED2_PIN, 0);
+    } else if(*element == 10){
+      GpioWritePin(LED1_BASE, LED1_PIN, 1);
+    } else if(*element == next) {
+      while(1) {
+        next++;
+        GpioWritePin(LED2_BASE, LED2_PIN, 1);
+        OS_delay(200);
+        GpioWritePin(LED2_BASE, LED2_PIN, 0);
+        OS_delay(200);
+        element = (uint32_t*)OS_queue_pend(&queue_int);
+        if(*element != next) {
+          break;
+        }
+      }
+    }
   }
 }
 
@@ -39,7 +59,7 @@ uint32_t stack_task2[STACK_SIZE_TASK2];
 OSThread tcb_task2;
 void task2() {
   while(1) {
-    GpioTogglePin(LED2_BASE, LED2_PIN);
+    //GpioTogglePin(LED2_BASE, LED2_PIN);
     OS_delay(2000);
   }
 }
@@ -48,10 +68,27 @@ void task2() {
 uint32_t stack_task3[STACK_SIZE_TASK3];
 OSThread tcb_task3;
 void task3() {
+  uint8_t emnts = 0;
+  uint32_t one = 1;
+  uint32_t two = 2;
+  uint32_t three = 3;
+  uint32_t four = 4;
+  uint32_t five = 5;
+  uint32_t x = 10;
   while(1) {
     GpioTogglePin(LED3_BASE, LED3_PIN);
     OS_delay(4000);
-    OS_queue_post(queue_int, (uint32_t)10);
+    if(emnts == 2) {
+      OS_queue_post(&queue_int, &one);
+      OS_queue_post(&queue_int, &two);
+      OS_queue_post(&queue_int, &three);
+      OS_queue_post(&queue_int, &four);
+      OS_queue_post(&queue_int, &five);
+
+    } else {
+      OS_queue_post(&queue_int, &x);
+    }
+    ++emnts;
   }
 }
 
@@ -70,7 +107,7 @@ int main(void) {
   OS_create_thread(&tcb_task1, 1, &task1, stack_task1, sizeof(stack_task1));
   OS_create_thread(&tcb_task2, 2, &task2, stack_task2, sizeof(stack_task2));
   OS_create_thread(&tcb_task3, 2, &task3, stack_task3, sizeof(stack_task3));
-  queue_int = OS_queue_create(buff, 10);
+  queue_int = OS_queue_create(buff, QUEUE_INT_SIZE);
 
   __enable_irq();
 

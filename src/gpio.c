@@ -44,7 +44,7 @@ void GpioSetPin(GPIO_TypeDef* gpiox, uint8_t gpioPin) {
 }
 
 void GpioResetPin(GPIO_TypeDef* gpiox, uint8_t gpioPin) {
-  gpiox->ODR &= (1 << gpioPin);
+  gpiox->ODR &= ~(1 << gpioPin);
 }
 
 void GpioSetPull(GPIO_TypeDef* gpiox, unsigned long gpioPin, uint8_t mode) {
