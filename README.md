@@ -1,3 +1,8 @@
 This is my own RTOS. <br>
-I dont know how far i will go. <br>
-For now it consists of not working task scheduler. <br>
+
+For now it consists of: <br>
+ - Context switch on stm32f302r8
+ - Queue with proper synchronization
+ - mutex
+ - semaphore
+ - task prioritization
