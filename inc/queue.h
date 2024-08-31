@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <mutex.h>
+#include <semaphore.h>
 
 typedef struct {
   void** buf;
@@ -10,6 +12,9 @@ typedef struct {
   uint32_t last_element;
   uint32_t first_element;
   uint32_t size;
+  OS_semaphore_handle consumer_sem;
+  OS_semaphore_handle producer_sem;
+  OS_mutex_handle queue_mutate_mutex;
 } OS_queue_handle;
 
 OS_queue_handle OS_queue_create(void** buf, uint32_t capacity);
