@@ -76,8 +76,8 @@ int main(void) {
 
 
   OS_create_thread(&tcb_task1, 1, &task1, stack_task1, sizeof(stack_task1));
-  OS_create_thread(&tcb_task2, 2, &task2, stack_task2, sizeof(stack_task2));
-  OS_create_thread(&tcb_task3, 2, &task3, stack_task3, sizeof(stack_task3));
+  OS_create_thread(&tcb_task2, 1, &task2, stack_task2, sizeof(stack_task2));
+  OS_create_thread(&tcb_task3, 1, &task3, stack_task3, sizeof(stack_task3));
   queue_int = OS_queue_create(buff, QUEUE_INT_SIZE);
   mutex = OS_create_mutex();
 

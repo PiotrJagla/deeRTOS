@@ -4,7 +4,7 @@
 #include <stdbool.h>
 
 typedef struct {
-  bool is_locked;
+  volatile bool is_locked;
 } OS_mutex_handle;
 
 OS_mutex_handle OS_create_mutex();

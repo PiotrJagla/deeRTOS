@@ -9,8 +9,7 @@ OS_mutex_handle OS_create_mutex() {
 }
 
 void OS_lock(OS_mutex_handle* mh) {
-  while(mh->is_locked);
-  mh->is_locked = true;
+  while(!__sync_bool_compare_and_swap(&mh->is_locked, false, true));
 }
 void OS_unlock(OS_mutex_handle* mh) {
   mh->is_locked = false;
