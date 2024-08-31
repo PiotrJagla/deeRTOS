@@ -1,12 +1,12 @@
 #include <stm32f302x8.h>
 #include <stm32f3xx.h>
-#include <stdio.h>
 #include <usart.h>
 #include <cmsis_util.h>
 #include <gpio.h>
 #include <timers.h>
 #include <stdint.h>
 #include <deeRTOS.h>
+#include <printf.h>
 
 #define LED1_BASE GPIOA
 #define LED1_PIN 8

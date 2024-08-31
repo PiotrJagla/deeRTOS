@@ -2,6 +2,7 @@
 #include <sys/stat.h>
 #include "usart.h"
 #include <errno.h>
+#include <printf.h>
 #undef errno
 extern int errno;
 
@@ -9,6 +10,9 @@ register char* stack_ptr __asm__("sp");
 char *__env[1] = { 0 };
 char **environ = __env;
 
+void _putchar(char character) {
+  usart_transmit(USART2, character);
+}
 
 void _exit(int exit_code) {
   while(1) {
