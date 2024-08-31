@@ -24,7 +24,7 @@ void OS_idle() {
 }
 
 int OS_init() {
-  OS_create_thread(&idleThread, 30, &OS_idle, stack_idleThread, sizeof(stack_idleThread));
+  OS_create_thread(&idleThread, 31, &OS_idle, stack_idleThread, sizeof(stack_idleThread));
   OS_curr_task = (void*)0;
   OS_next_task = (void*)0;
 
@@ -50,11 +50,10 @@ void OS_delay(uint32_t miliseconds){
   __enable_irq();
 }
 
-
 void insert_sorted(OSThread* t) {
   OS_threads[OS_threads_num] = t;
 
-  for(int i = OS_threads_num ; i > 0 ; --i) {
+  for(int8_t i = OS_threads_num ; i > 0 ; --i) {
     if(OS_threads[i]->priority < OS_threads[i-1]->priority) {
       OSThread* tmp = OS_threads[i];
       OS_threads[i] = OS_threads[i-1];
@@ -62,7 +61,9 @@ void insert_sorted(OSThread* t) {
     }
   }
 }
-int OS_create_thread(OSThread* me, uint8_t priority, OSThreadHandler threadHandler, void* stkSto, uint32_t stkSize) {
+
+int OS_create_thread(OSThread* me, uint8_t priority, 
+        OSThreadHandler threadHandler, void* stkSto, uint32_t stkSize) {
 
   if(OS_threads_num == MAX_THREADS) {
     return 1;

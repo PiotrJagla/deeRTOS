@@ -1,4 +1,3 @@
-#include "mutex.h"
 #include <stm32f302x8.h>
 #include <stm32f3xx.h>
 #include <stdio.h>
@@ -30,42 +29,36 @@ void* buff[QUEUE_INT_SIZE] = {0};
 uint32_t stack_task1[STACK_SIZE_TASK1];
 OSThread tcb_task1;
 void task1() {
-  uint32_t* r = NULL;
-  uint32_t e = 23;
   while(1) {
     GpioTogglePin(LED1_BASE, LED1_PIN);
-    OS_delay(20);
-    //r = (uint32_t*)OS_queue_pend(&queue);
-    OS_queue_post(&queue, &e);
+    //OS_delay(1000);
+    printf("Hello from taksk1\r\n");
+    //usart_transmit(USART2, 'c');
   }
 }
 
 #define STACK_SIZE_TASK2 50
-uint32_t stack_task2[STACK_SIZE_TASK2];
+//uint32_t stack_task2[STACK_SIZE_TASK2];
 OSThread tcb_task2;
 void task2() {
   while(1) {
-    //GpioTogglePin(LED2_BASE, LED2_PIN);
+    GpioTogglePin(LED2_BASE, LED2_PIN);
     OS_delay(2000);
   }
 }
 
 #define STACK_SIZE_TASK3 50
-uint32_t stack_task3[STACK_SIZE_TASK3];
+//uint32_t stack_task3[STACK_SIZE_TASK3];
 OSThread tcb_task3;
 void task3() {
-  uint32_t e = 12;
-  uint32_t* r = NULL;
   while(1) {
     GpioTogglePin(LED3_BASE, LED3_PIN);
-    OS_delay(2000);
-    //OS_queue_post(&queue, &e);
-    r = (uint32_t*)OS_queue_pend(&queue);
+    OS_delay(4000);
   }
 }
 
 
-int main(void) {
+void main(void) {
   system_init();
   usart_init(USART2);
   GpioInit();
@@ -74,8 +67,8 @@ int main(void) {
 
 
   OS_create_thread(&tcb_task1, 1, &task1, stack_task1, sizeof(stack_task1));
-  OS_create_thread(&tcb_task2, 1, &task2, stack_task2, sizeof(stack_task2));
-  OS_create_thread(&tcb_task3, 2, &task3, stack_task3, sizeof(stack_task3));
+ // OS_create_thread(&tcb_task2, 2, &task2, stack_task2, sizeof(stack_task2));
+  //OS_create_thread(&tcb_task3, 3, &task3, stack_task3, sizeof(stack_task3));
   queue = OS_queue_create(buff, QUEUE_INT_SIZE);
 
   __enable_irq();

@@ -6,6 +6,15 @@
 extern int errno;
 
 register char* stack_ptr __asm__("sp");
+char *__env[1] = { 0 };
+char **environ = __env;
+
+
+void _exit(int exit_code) {
+  while(1) {
+
+  }
+}
 
 caddr_t _sbrk(int incr) {
   extern char __bss_end__;
@@ -57,11 +66,6 @@ int _fstat(int file, struct stat* st) {
   return 0;
 }
 
-void _exit(int exit_code) {
-  while(1) {
-
-  }
-}
 
 
 
