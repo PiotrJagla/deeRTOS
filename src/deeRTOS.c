@@ -118,8 +118,8 @@ void OS_tick() {
 }
 
 void OS_sched() {
-  int fff = __builtin_ctz(OS_thread_ready_msk);
-  if(fff & (1<<31)){
+  int first_free_task = __builtin_ctz(OS_thread_ready_msk);
+  if(first_free_task & (1<<31)){
     OS_next_task = OS_threads[OS_threads_num-1];
     OS_curr_thread_idx = OS_threads_num-1;
     *(uint32_t*)0xE000ED04 |= (1 << 28); //trigger pendSV
@@ -129,7 +129,7 @@ void OS_sched() {
   int next_task_idx = 0;
   int curr_prio = -1;
   int curr_prio_offset = -1;
-  for(int i = 0 ; i < OS_threads_num ; ++i) {
+  for(int i = first_free_task ; i < OS_threads_num ; ++i) {
     if(OS_threads[i]->priority != curr_prio) {
       curr_prio = OS_threads[i]->priority;
       curr_prio_offset = i;
