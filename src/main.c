@@ -24,8 +24,7 @@ void task1() {
   while(1) {
     GpioTogglePin(LED1_BASE, LED1_PIN);
     OS_delay(1000);
-    printf("Hello from taksk1\r\n");
-    //usart_transmit(USART2, 'c');
+    //printf("Hello from taksk1\r\n");
   }
 }
 

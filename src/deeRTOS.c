@@ -1,10 +1,18 @@
 #include "deeRTOS.h"
 #include "stm32f3xx.h"
+#include <stdbool.h>
+#include <stddef.h>
+
+extern void portOS_trigger_context_switch(void);
+extern void portOS_disable_interrupts(void);
+extern void portOS_enable_interrupts(void);
+extern void portOS_init_stack(uint32_t** sp, OSThreadHandler threadHandler,
+                       void* stkSto, uint32_t stkSize);
 
 void OS_sched();
 
 #define MAX_THREADS 32
-#define PRIORITIES 32
+#define PRIORITIES 31
 OSThread* volatile OS_curr_task;
 OSThread* volatile OS_next_task;
 OSThread* OS_threads[MAX_THREADS+1];
@@ -23,6 +31,18 @@ void OS_idle() {
   }
 }
 
+void set_ready_on_index(uint32_t i) {
+  OS_thread_ready_msk |= (1<<(31-i));
+}
+
+void reset_ready_on_index(uint32_t i) {
+  OS_thread_ready_msk &= ~(1<<(31-i));
+}
+
+bool is_ready_on_index(uint32_t i){
+  return OS_thread_ready_msk & (1<<(31-i));
+}
+
 int OS_init() {
   OS_create_thread(&idleThread, 31, &OS_idle, stack_idleThread, sizeof(stack_idleThread));
   OS_curr_task = (void*)0;
@@ -34,20 +54,20 @@ int OS_init() {
 
 void OS_start() {
   for(int i = 0 ; i < OS_threads_num ; ++i) {
-    OS_thread_ready_msk |= (1<<i);
+    set_ready_on_index(i);
   }
-  __disable_irq();
+  portOS_disable_interrupts();
   OS_sched();
-  __enable_irq();
+  portOS_enable_interrupts();
 }
 
 
 void OS_delay(uint32_t miliseconds){
-  __disable_irq();
+  portOS_disable_interrupts();
   OS_curr_task->timeout = miliseconds;
-  OS_thread_ready_msk &= ~(1<< OS_curr_thread_idx);
+  reset_ready_on_index(OS_curr_thread_idx);
   OS_sched();
-  __enable_irq();
+  portOS_enable_interrupts();
 }
 
 void insert_sorted(OSThread* t) {
@@ -68,37 +88,10 @@ int OS_create_thread(OSThread* me, uint8_t priority,
   if(OS_threads_num == MAX_THREADS) {
     return 1;
   }
-
-  uint32_t* sp = (uint32_t*)((((uint32_t)stkSto + stkSize)/8)*8);
-
-  *(--sp) = (1U << 24); // xPSR thums set
-  *(--sp) = (uint32_t)threadHandler; // PC
-  *(--sp) = 0x0000000EU; // LR
-  *(--sp) = 0x0000000CU; // R12
-  *(--sp) = 0x00000003U; // R3
-  *(--sp) = 0x00000002U; // R2
-  *(--sp) = 0x00000001U; // R1
-  *(--sp) = 0x00000000U; // R0
-
-  // Save additional registrs
-  *(--sp) = 0x0000000BU; // R11
-  *(--sp) = 0x0000000AU; // R10
-  *(--sp) = 0x00000009U; // R9
-  *(--sp) = 0x00000008U; // R8
-  *(--sp) = 0x00000007U; // R7
-  *(--sp) = 0x00000006U; // R6
-  *(--sp) = 0x00000005U; // R5
-  *(--sp) = 0x00000004U; // R4
   
-  me->sp = sp;
+  portOS_init_stack((uint32_t**)&me->sp, threadHandler, stkSto, stkSize);
   me->priority = priority;
   OS_prio_threads_num[priority]++;
-
-  uint32_t* stk_limit = (uint32_t*)(((((uint32_t)stkSto-1U)/8)+1U)*8);
-
-  for(sp = sp-1U; sp >= stk_limit; --sp) {
-    *sp = 0xDEADBEEF;
-  }
 
   insert_sorted(me);
 
@@ -111,18 +104,18 @@ void OS_tick() {
     if(OS_threads[i]->timeout != 0) {
       --OS_threads[i]->timeout;
       if(OS_threads[i]->timeout == 0) {
-        OS_thread_ready_msk |= (1 << i);
+        set_ready_on_index(i);
       }
     }
   }
 }
 
 void OS_sched() {
-  int first_free_task = __builtin_ctz(OS_thread_ready_msk);
-  if(first_free_task & (1<<31)){
-    OS_next_task = OS_threads[OS_threads_num-1];
-    OS_curr_thread_idx = OS_threads_num-1;
-    *(uint32_t*)0xE000ED04 |= (1 << 28); //trigger pendSV
+  int first_free_task = __builtin_clz(OS_thread_ready_msk);
+  if(first_free_task == (OS_threads_num-1)){
+    OS_next_task = OS_threads[first_free_task];
+    OS_curr_thread_idx = first_free_task;
+    portOS_trigger_context_switch();
     return;
   }
 
@@ -137,58 +130,23 @@ void OS_sched() {
     int curr_prio_idx = OS_curr_prio_idx[curr_prio];
     int task_idx = curr_prio_offset + curr_prio_idx;
     OS_curr_prio_idx[curr_prio] = (++curr_prio_idx)%OS_prio_threads_num[curr_prio];
-    if(OS_thread_ready_msk & (1<<task_idx)) {
+    if(is_ready_on_index(task_idx)) {
       next_task_idx = task_idx;
       break;
     }
   }
   OS_next_task = OS_threads[next_task_idx];
   OS_curr_thread_idx = next_task_idx;
-  *(uint32_t*)0xE000ED04 |= (1 << 28); //trigger pendSV
+  portOS_trigger_context_switch();
 }
 
 
 #ifdef ISRTOS
 void systick_handler() {
   OS_tick();
-  __disable_irq();
+  portOS_disable_interrupts();
   OS_sched();
-  __enable_irq();
-}
-
-void pendsv_handler(void) {
-  __asm__("CPSID I");
-
-  //arm-none-eabi-gcc is pushing this register on stack so i have to pop it
-  //but when i call a function from this interrupt gcc is pushing r7 with lr registers
-  __asm__("POP {r7}");
-
-  //Check if current task is null
-  __asm__("LDR r1, =OS_curr_task");
-  __asm__("LDR r1, [r1]");
-  __asm__("CBZ r1, Context_Restore");
-
-  //Save current stack context
-  __asm__("PUSH {r4-r11}");
-  __asm__("STR sp, [r1]"); // OS_curr_task is already in r1
-
-  //Restore next task context
-  __asm__("Context_Restore:");
-  // sp = next task stack pointer
-  __asm__("LDR r1, =OS_next_task");
-  __asm__("LDR r1, [r1]");
-  __asm__("LDR sp, [r1]");
-
-  // curr stack pointer = next stack pointer
-  __asm__("LDR r1, =OS_next_task");
-  __asm__("LDR r1, [r1]");
-  __asm__("LDR r2, =OS_curr_task");
-  __asm__("STR r1, [r2]");
-
-  __asm__("POP {r4-r11}");
-
-  __asm__("CPSIE I");
-  __asm__("BX LR");
+  portOS_enable_interrupts();
 }
 #endif
 
