@@ -1,6 +1,6 @@
 CC=avr-gcc
 
-CFLAGS= -DF_CPU=16000000L -mmcu=atmega328p
+CFLAGS= -DF_CPU=16000000L -mmcu=atmega328p -O0
 INC=-I./inc/
 
 SRCDIR=./src

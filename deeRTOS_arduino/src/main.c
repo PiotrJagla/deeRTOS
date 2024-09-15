@@ -13,8 +13,9 @@
 
 #define BLINK1_STACK_SIZE 128
 uint8_t blink1_stack[BLINK1_STACK_SIZE] = {};
-void* blink1_sp;
+void* volatile blink1_sp;
 void blink1() {
+  DDRB |= (1<<DDB5) | (1<<DDB4);
   while(true) {
     PORTB ^= (1<<GREEN_LED);
     _delay_ms(100);
@@ -28,7 +29,7 @@ ISR(TIMER1_OVF_vect)
   ticks++;
 
   TIMSK1 &= ~(1<<TOIE1);
-  //PORTB |= (1<<BUILTIN_LED);
+  PORTB |= (1<<BUILTIN_LED);
   __asm__ __volatile__ ("lds    r26, blink1_sp                       \n\t"   \
                         "lds    r27, blink1_sp + 1                   \n\t"   \
                         "ld     r28, x+                                 \n\t"   \
@@ -57,39 +58,21 @@ int main() {
 
   //Prepare blink1 stack
   uint8_t* sp = &blink1_stack[BLINK1_STACK_SIZE-1];
-  uint16_t pc = (uint16_t)&blink1;
-  *(sp--) = 0x11;       
-  *(sp--) = 0x22;       
-  *(sp--) = 0x33;       
+  void (*blink1_task)(void) = blink1;
+  uint16_t pc = (uint16_t)blink1_task;
   *(sp--) = (uint8_t)(pc & 0x00FF);       
   *(sp--) = (uint8_t)((pc >> 8) & 0x00FF); 
-  //*(sp--) = 0x00; //r29
-  //*(sp--) = 0x00; //r28
-  //*(sp--) = 0x00; //r31
-  //*(sp--) = 0x00; //r30
-  //*(sp--) = 0x00; //r27
-  //*(sp--) = 0x00; //r26
-  //*(sp--) = 0x00; //r25
-  //*(sp--) = 0x00; //r24
-  //*(sp--) = 0x00; //r23
-  //*(sp--) = 0x00; //r22
-  //*(sp--) = 0x00; //r21
-  //*(sp--) = 0x00; //r20
-  //*(sp--) = 0x00; //r19
-  //*(sp--) = 0x00; //r18
-  //*(sp--) = 0x00; //r17
-  //*(sp--) = 0x00; //r16
-  //*(sp--) = 0x00; //r0
-  //*(sp--) = 0x00; //SREG
-  //*(sp) = 0x00; //r1
-  blink1_sp = sp;
-
+  *(sp--) = (uint8_t)(pc & 0x00FF);       
+  *(sp--) = (uint8_t)((pc >> 8) & 0x00FF); 
+  blink1_sp = &sp;
 
   sei();
 
 
   while(1) {
     _delay_ms(100);
-    PORTB ^= (1<<GREEN_LED);
+    //PORTB ^= (1<<GREEN_LED);
   }
 }
+
+
