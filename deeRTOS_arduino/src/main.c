@@ -20,7 +20,7 @@ void* volatile blink1_sp;
 void blink1() {
   while(true) {
     PORTB ^= (1<<GREEN_LED);
-    _delay_ms(800);
+    _delay_ms(4000);
   }
 }
 
@@ -31,23 +31,14 @@ uint32_t counter = 0;
 void blink2() {
   while(true) {
     PORTB ^= (1<<RED_LED);
-    _delay_ms(400);
+    _delay_ms(2000);
   }
 }
 
 void* volatile curr_task_sp;
 void* volatile next_task_sp;
 int next_task_num = 0;
-
-uint16_t get_stack_pointer(void) {
-    uint16_t sp;
-    __asm__ __volatile__ (
-        "in %A0, __SP_L__ \n\t"  // Read low byte of SP into the lower byte of sp
-        "in %B0, __SP_H__ \n\t"  // Read high byte of SP into the upper byte of sp
-        : "=r" (sp)              // Output operand
-    );
-    return sp;
-}
+bool isTrue = false;
 
 uint32_t ticks = 0;
 ISR(TIMER1_OVF_vect)
@@ -65,57 +56,65 @@ ISR(TIMER1_OVF_vect)
   }
 
 
-  if (curr_task_sp != NULL) {
-    // Save the current task's stack pointer
+  //save context
+  //if(curr_task_sp != NULL) {
+  if(isTrue) {
     curr_task_sp = NULL;
-    __asm__ __volatile__ (
-      "lds    r26, curr_task_sp      \n\t"  
-      "lds    r27, curr_task_sp + 1  \n\t"  
-      "in     r0, __SP_L__           \n\t"  
-      "st     X+, r0                 \n\t"  
-      "in     r0, __SP_H__           \n\t"  
-      "st     X+, r0                 \n\t"  
-    );
+    if(next_task_num == 1) {
+      //__asm__ __volatile__ ("lds   r26, blink2_sp");
+      //__asm__ __volatile__ ("lds   r27, blink2_sp + 1");
+      //__asm__ __volatile__ ("in    r0, __SP_L__");
+      //__asm__ __volatile__ ("st    x+, r0");
+      //__asm__ __volatile__ ("in    r0, __SP_H__");
+      //__asm__ __volatile__ ("st    x+, r0");
+      __asm__ volatile (
+          "in %A0, __SP_L__ \n\t"  // Load SPL (stack pointer low byte) into the low byte of the variable
+          "in %B0, __SP_H__ \n\t"  // Load SPH (stack pointer high byte) into the high byte of the variable
+          : "=r" (blink2_sp)              // Output: store the result in sp
+      );
+    } else if(next_task_num == 2) {
+      //__asm__ __volatile__ ("lds   r26, blink1_sp");
+      //__asm__ __volatile__ ("lds   r27, blink1_sp + 1");
+      //__asm__ __volatile__ ("in    r0, __SP_L__");
+      //__asm__ __volatile__ ("st    x+, r0");
+      //__asm__ __volatile__ ("in    r0, __SP_H__");
+      //__asm__ __volatile__ ("st    x+, r0");
+      __asm__ volatile (
+          "in %A0, __SP_L__ \n\t"  // Load SPL (stack pointer low byte) into the low byte of the variable
+          "in %B0, __SP_H__ \n\t"  // Load SPH (stack pointer high byte) into the high byte of the variable
+          : "=r" (blink1_sp)              // Output: store the result in sp
+      );
+    }
+    //__asm__ __volatile__ ("lds   r26, curr_task_sp");
+    //__asm__ __volatile__ ("lds   r27, curr_task_sp + 1");
+    //__asm__ __volatile__ ("in    r0, __SP_L__");
+    //__asm__ __volatile__ ("st    x+, r0");
+    //__asm__ __volatile__ ("in    r0, __SP_H__");
+    //__asm__ __volatile__ ("st    x+, r0");
     if(curr_task_sp == NULL) {
       PORTB |= (1<<YELLOW_LED);
     }
+  } else {
+    isTrue = true;
   }
-  
-  // Switch to the next task
-  curr_task_sp = next_task_sp;
-  
-  // Restore the new task's stack pointer
-  __asm__ __volatile__ (
-      "lds    r26, next_task_sp      \n\t"  
-      "lds    r27, next_task_sp + 1  \n\t"  
-      //"ld     r28, X+                \n\t"  
-      "out    __SP_L__, r26          \n\t"  
-      //"ld     r29, X+                \n\t"  
-      "out    __SP_H__, r27          \n\t"  
-  );
-
-  //save context
-  //if(curr_task_sp != NULL) {
-  //  __asm__ __volatile__ ("lds   r26, curr_task_sp");
-  //  __asm__ __volatile__ ("lds   r27, curr_task_sp + 1");
-  //  __asm__ __volatile__ ("in    r0, __SP_L__");
-  //  __asm__ __volatile__ ("st    x+, r0");
-  //  __asm__ __volatile__ ("in    r0, __SP_H__");
-  //  __asm__ __volatile__ ("st    x+, r0");
-  //}
 
   //curr_task_sp = next_task_sp;
 
-  ////restore context
+  //restore context
+  if(next_task_num == 1) {
+    __asm__ __volatile__ ("lds    r26, blink1_sp");
+    __asm__ __volatile__ ("lds    r27, blink1_sp + 1");
+    __asm__ __volatile__ ("out    __SP_L__, r26");
+    __asm__ __volatile__ ("out    __SP_H__, r27");
+  } else if(next_task_num == 2) {
+    __asm__ __volatile__ ("lds    r26, blink2_sp");
+    __asm__ __volatile__ ("lds    r27, blink2_sp + 1");
+    __asm__ __volatile__ ("out    __SP_L__, r26");
+    __asm__ __volatile__ ("out    __SP_H__, r27");
+  }
   //__asm__ __volatile__ ("lds    r26, next_task_sp");
   //__asm__ __volatile__ ("lds    r27, next_task_sp + 1");
-
-  ////__asm__ __volatile__ ("ld    r28, x+");
-  ////__asm__ __volatile__ ("out    __SP_L__, r28");
   //__asm__ __volatile__ ("out    __SP_L__, r26");
-
-  ////__asm__ __volatile__ ("ld    r29, x+");
-  ////__asm__ __volatile__ ("out    __SP_H__, r29");
   //__asm__ __volatile__ ("out    __SP_H__, r27");
   sei();
 }
