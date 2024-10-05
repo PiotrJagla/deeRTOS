@@ -50,6 +50,10 @@ void portOS_enable_interrupts(void) {
   __enable_irq();
 }
 
+void OS_hardware_specific_config(void) {
+  *(uint32_t volatile *)0xE000ED20 |= (0xFF << 16); //Set pendSV priority to lowest
+}
+
 void portOS_init_stack(uint32_t** sp, OSThreadHandler threadHandler,
                        void* stkSto, uint32_t stkSize) {
   *sp = (uint32_t*)((((uint32_t)stkSto + stkSize)/8)*8);

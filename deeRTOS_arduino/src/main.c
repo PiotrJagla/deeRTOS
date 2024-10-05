@@ -16,6 +16,10 @@
 #define LIGHT_YELLOW PORTB |= (1<<YELLOW_LED);
 
 
+//extern void OS_context_switch(void);
+void OS_context_switch(void);
+
+
 #define BLINK1_STACK_SIZE 64
 uint8_t blink1_stack[BLINK1_STACK_SIZE] = {};
 void* volatile blink1_sp;
@@ -80,7 +84,6 @@ ISR(TIMER1_OVF_vect)
   __asm__ __volatile__ ("out    __SP_H__, r27");
   sei();
 }
-
 
 int main() {
   cli();

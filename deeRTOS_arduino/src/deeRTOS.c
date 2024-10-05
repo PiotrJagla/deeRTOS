@@ -1,10 +1,10 @@
 #include "deeRTOS.h"
-#include "stm32f3xx.h"
 #include <stdbool.h>
 #include <stddef.h>
 
 extern void portOS_trigger_context_switch(void);
 extern void portOS_disable_interrupts(void);
+extern void OS_hardware_specific_config(void);
 extern void portOS_enable_interrupts(void);
 extern void portOS_init_stack(uint32_t** sp, OSThreadHandler threadHandler,
                        void* stkSto, uint32_t stkSize);
@@ -20,6 +20,7 @@ uint8_t OS_prio_threads_num[PRIORITIES] = {0};
 uint8_t OS_curr_prio_idx[PRIORITIES] = {0};
 uint8_t OS_threads_num = 0;
 uint8_t OS_curr_thread_idx = -1;
+uint8_t OS_prev_thread_idx = -1;
 uint32_t OS_thread_ready_msk = 0;
 
 
@@ -48,7 +49,7 @@ int OS_init() {
   OS_curr_task = (void*)0;
   OS_next_task = (void*)0;
 
-  *(uint32_t volatile *)0xE000ED20 |= (0xFF << 16); //Set pendSV priority to lowest
+  OS_hardware_specific_config();
   return 0;
 }
 
@@ -136,8 +137,10 @@ void OS_sched() {
     }
   }
   OS_next_task = OS_threads[next_task_idx];
-  portOS_trigger_context_switch();
+
+  OS_prev_thread_idx = OS_curr_thread_idx; //for AVR
   OS_curr_thread_idx = next_task_idx;
+  portOS_trigger_context_switch();
 }
 
 
