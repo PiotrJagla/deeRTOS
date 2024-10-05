@@ -145,11 +145,24 @@ void OS_sched() {
 
 
 #ifdef ISRTOS
-void systick_handler() {
+//void systick_handler() {
+//  OS_tick();
+//  portOS_disable_interrupts();
+//  OS_sched();
+//  portOS_enable_interrupts();
+//}
+ISR(TIMER1_OVF_vect)
+{
   OS_tick();
+  TCNT1 = 65535 - (F_CPU/256)/1000;
   portOS_disable_interrupts();
-  OS_sched();
-  portOS_enable_interrupts();
+
+  //schedule next task
+  next_task_num = (curr_task_num+1)%2;
+  next_task_sp = *stack_pointers[next_task_num];
+  sei();
+
+  trigger_context_switch();
 }
 #endif
 

@@ -14,6 +14,9 @@
 #define YELLOW_LED PB2
 
 #define LIGHT_YELLOW PORTB |= (1<<YELLOW_LED);
+#define TOGGLE_YELLOW PORTB ^= (1<<YELLOW_LED);
+
+#define INT1_PIN PD3
 
 
 //extern void OS_context_switch(void);
@@ -47,6 +50,9 @@ int next_task_num = 0;
 int curr_task_num = 0;
 void* volatile * stack_pointers[32] = {};
 
+void trigger_context_switch() {
+  PORTD |= (1<<INT1_PIN);
+}
 
 uint32_t ticks = 0;
 ISR(TIMER1_OVF_vect)
@@ -58,32 +64,11 @@ ISR(TIMER1_OVF_vect)
   //schedule next task
   next_task_num = (curr_task_num+1)%2;
   next_task_sp = *stack_pointers[next_task_num];
-
-  //save context
-  if(curr_task_sp != NULL) {
-    
-    __asm__ volatile (
-        "in     r30, __SP_L__       \n\t"  
-        "in     r31, __SP_H__       \n\t"  
-        "sts    curr_task_sp, r30   \n\t"  
-        "sts    curr_task_sp+1, r31 \n\t"  
-        :
-        :
-        : "r30", "r31"
-    );
-    *stack_pointers[curr_task_num] = curr_task_sp;
-  } 
-
-  curr_task_sp = next_task_sp;
-  curr_task_num = next_task_num;
-
-  //restore context
-  __asm__ __volatile__ ("lds    r26, next_task_sp");
-  __asm__ __volatile__ ("lds    r27, next_task_sp + 1");
-  __asm__ __volatile__ ("out    __SP_L__, r26");
-  __asm__ __volatile__ ("out    __SP_H__, r27");
   sei();
+
+  trigger_context_switch();
 }
+
 
 int main() {
   cli();
@@ -97,8 +82,15 @@ int main() {
   //set the prescaler to 1024
   TCCR1B = (0b100<<CS10);
   TCCR1A = 0x00;
-
   TIMSK1 = (1<<TOIE1);
+  
+  //Contigure INT1 interrupt
+  SREG |= (1<<SREG_I);
+  EICRA |= (0b11 << ISC10);
+  EIMSK |= (1<<INT1);
+  DDRD |= (1<<INT1_PIN);
+
+
 
   //Prepare blink1 stack
   uint8_t* sp1 = &blink1_stack[BLINK1_STACK_SIZE-1];
@@ -107,8 +99,6 @@ int main() {
   *(sp1--) = (uint8_t)((pc1 >> 8) & 0x00FF); 
   *(sp1--) = 0; 
   *(sp1--) = 0b10000000;  //SREG
-  *(sp1--) = 0; 
-  *(sp1--) = 0; 
   *(sp1--) = 0; 
   *(sp1--) = 0; 
   *(sp1--) = 0; 
@@ -136,8 +126,6 @@ int main() {
   *(sp2--) = 0; 
   *(sp2--) = 0; 
   *(sp2--) = 0; 
-  *(sp2--) = 0; 
-  *(sp2--) = 0; 
   blink2_sp = sp2;
   stack_pointers[1] = &blink2_sp;
 
@@ -150,8 +138,9 @@ int main() {
 
 
   while(1) {
-    _delay_ms(100);
+    _delay_ms(1000);
     PORTB ^= (1<<BUILTIN_LED);
+    PORTD |= (1<<INT1_PIN);
   }
 }
 
