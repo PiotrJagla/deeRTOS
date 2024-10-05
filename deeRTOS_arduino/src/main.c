@@ -13,6 +13,8 @@
 #define RED_LED PB3
 #define YELLOW_LED PB2
 
+#define LIGHT_YELLOW PORTB |= (1<<YELLOW_LED);
+
 
 #define BLINK1_STACK_SIZE 64
 uint8_t blink1_stack[BLINK1_STACK_SIZE] = {};
@@ -39,7 +41,7 @@ void* volatile curr_task_sp;
 void* volatile next_task_sp;
 int next_task_num = 0;
 int curr_task_num = 0;
-void** stack_pointers[32] = {};
+void* volatile * stack_pointers[32] = {};
 
 
 uint32_t ticks = 0;
@@ -49,23 +51,22 @@ ISR(TIMER1_OVF_vect)
   ticks++;
   TCNT1 = 65535 - (F_CPU/256)/1000;
 
-  if(curr_task_num == 1) {
-    next_task_sp = blink2_sp;
-    next_task_num = 2;
-  } else if(curr_task_num == 2) {
-    next_task_sp = blink1_sp;
-    next_task_num = 1;
-  }
-
+  //schedule next task
+  next_task_num = (curr_task_num+1)%2;
+  next_task_sp = *stack_pointers[next_task_num];
 
   //save context
   if(curr_task_sp != NULL) {
+    
     __asm__ volatile (
-        "in %A0, __SP_L__ \n\t"  
-        "in %B0, __SP_H__ \n\t"  
-        : "=r" (curr_task_sp)       
+        "in     r30, __SP_L__       \n\t"  
+        "in     r31, __SP_H__       \n\t"  
+        "sts    curr_task_sp, r30   \n\t"  
+        "sts    curr_task_sp+1, r31 \n\t"  
+        :
+        :
+        : "r30", "r31"
     );
-
     *stack_pointers[curr_task_num] = curr_task_sp;
   } 
 
@@ -115,7 +116,7 @@ int main() {
   *(sp1--) = 0; 
   *(sp1--) = 0; 
   blink1_sp = sp1;
-  stack_pointers[1] = &blink1_sp;
+  stack_pointers[0] = &blink1_sp;
 
   uint8_t* sp2 = &blink2_stack[BLINK2_STACK_SIZE-1];
   uint16_t pc2 = (uint16_t)&blink2;
@@ -135,12 +136,12 @@ int main() {
   *(sp2--) = 0; 
   *(sp2--) = 0; 
   blink2_sp = sp2;
-  stack_pointers[2] = &blink2_sp;
+  stack_pointers[1] = &blink2_sp;
 
   curr_task_sp = NULL;
   next_task_sp = NULL;
-  next_task_num = 1;
-  curr_task_num = 2;
+  next_task_num = 0;
+  curr_task_num = 0;
 
   sei();
 
