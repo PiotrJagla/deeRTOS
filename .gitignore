@@ -2,7 +2,7 @@ obj/
 compile_commands.json
 programBin.elf
 .cache/
-./deeRTOS_arduino/blink.elf
-./deeRTOS_arduino/obj/
-./deeRTOS_arduino/blink.hex
-./deeRTOS_arduino/compile_commands.json
+deeRTOS_arduino/blink.elf
+deeRTOS_arduino/obj/
+deeRTOS_arduino/blink.hex
+deeRTOS_arduino/compile_commands.json
