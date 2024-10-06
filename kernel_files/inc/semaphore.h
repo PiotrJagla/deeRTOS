@@ -2,9 +2,10 @@
 #define SEMAPHORE_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 typedef struct {
-  int32_t val;
+  int8_t val;
 } OS_semaphore_handle;
 
 OS_semaphore_handle OS_create_semaphore(int32_t init_val);

@@ -1,11 +1,15 @@
+#include <stddef.h>
+#include <stdint.h>
+#include <stdbool.h>
+
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/common.h>
 #include <avr/sfr_defs.h>
-#include <deeRTOS.h>
-#include <stddef.h>
-#include <stdint.h>
+
 #include <portmacro.h>
+#include <deeRTOS.h>
+
 
 #define INT1_PIN PD3
 
@@ -127,4 +131,43 @@ ISR(TIMER1_OVF_vect)
   portOS_disable_interrupts();
   OS_sched();
   portOS_enable_interrupts();
+}
+
+
+void sync_fetch_and_add(int8_t* ptr, int8_t val) {
+  portOS_disable_interrupts();
+  *ptr += val;
+  portOS_enable_interrupts();
+}
+
+void sync_fetch_and_sub(int8_t* ptr, int8_t val) {
+  portOS_disable_interrupts();
+  *ptr -= val;
+  portOS_enable_interrupts();
+}
+
+bool sync_val_compare_and_swap(int8_t * ptr, int8_t old_val, int8_t new_val) {
+  bool res;
+  portOS_disable_interrupts();
+  if(*ptr == old_val) {
+    *ptr = new_val;
+    res = true;
+  } else {
+    res = false;
+  }
+  portOS_enable_interrupts();
+  return res;
+}
+
+bool sync_bool_compare_and_swap(bool * ptr, bool old_val, bool new_val) {
+  bool res;
+  portOS_disable_interrupts();
+  if(*ptr == old_val) {
+    *ptr = new_val;
+    res = true;
+  } else {
+    res = false;
+  }
+  portOS_enable_interrupts();
+  return res;
 }

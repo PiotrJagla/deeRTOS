@@ -2,6 +2,7 @@
 #include <deeRTOS.h>
 
 
+
 OS_mutex_handle OS_create_mutex() {
   OS_mutex_handle mh = {
     .is_locked = false,
@@ -9,8 +10,11 @@ OS_mutex_handle OS_create_mutex() {
   return mh;
 }
 
+
 void OS_lock(OS_mutex_handle* mh) {
-  while(!__sync_bool_compare_and_swap(&mh->is_locked, false, true)) {
+  extern bool sync_bool_compare_and_swap(bool * ptr, bool old_val, bool new_val);
+
+  while(!sync_bool_compare_and_swap(&mh->is_locked, false, true)) {
     OS_delay(1);
   }
 }

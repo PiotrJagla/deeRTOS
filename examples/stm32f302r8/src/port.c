@@ -1,7 +1,10 @@
-#include <deeRTOS.h>
-#include <stm32f3xx.h>
 #include <stdint.h>
+#include <stdbool.h>
+
+#include <stm32f3xx.h>
+
 #include <portmacro.h>
+#include <deeRTOS.h>
 
 void pendsv_handler(void) {
 	extern OSThread* volatile OS_curr_task;
@@ -101,6 +104,8 @@ void portOS_init_stack(RegisterSize** sp, OSThreadHandler threadHandler,
   **sp = 0x00000004U; // R4
 }
 
+
+
 #ifdef ISRTOS
 void systick_handler() {
   extern void OS_tick(void);
@@ -112,3 +117,21 @@ void systick_handler() {
   portOS_enable_interrupts();
 }
 #endif
+
+
+
+void sync_fetch_and_add(int8_t* ptr, int8_t val) {
+  __sync_fetch_and_add(ptr, val);
+}
+
+void sync_fetch_and_sub(int8_t* ptr, int8_t val) {
+  __sync_fetch_and_sub(ptr, val);
+}
+
+bool sync_val_compare_and_swap(int8_t * ptr, int8_t old_val, int8_t new_val) {
+  return __sync_val_compare_and_swap(ptr, old_val, new_val);
+}
+
+bool sync_bool_compare_and_swap(bool * ptr, bool old_val, bool new_val) {
+  return __sync_bool_compare_and_swap(ptr, old_val, new_val);
+}

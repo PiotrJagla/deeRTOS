@@ -1,7 +1,14 @@
 #Sync source files
-cp -v ./examples/$1/src/* ./kernel_files/src/ 
-cp -v ./examples/$1/inc/* ./kernel_files/inc/ 
+cp -v ./examples/$1/src/deeRTOS.c ./kernel_files/src/deeRTOS.c 
+cp -v ./examples/$1/src/mutex.c ./kernel_files/src/mutex.c 
+cp -v ./examples/$1/src/semaphore.c ./kernel_files/src/semaphore.c 
+cp -v ./examples/$1/src/queue.c ./kernel_files/src/queue.c 
+
+cp -v ./examples/$1/inc/deeRTOS.h ./kernel_files/inc/deeRTOS.h 
+cp -v ./examples/$1/inc/mutex.h ./kernel_files/inc/mutex.h 
+cp -v ./examples/$1/inc/semaphore.h ./kernel_files/inc/semaphore.h 
+cp -v ./examples/$1/inc/queue.h ./kernel_files/inc/queue.h 
 
 #Sync port
-cp -v ./examples/$1/inc/portmacro.h ./portable/$1/
-cp -v ./examples/$1/inc/port.c ./portable/$1/
+cp -v ./examples/$1/inc/portmacro.h ./portable/$1/portmacro.h
+cp -v ./examples/$1/src/port.c ./portable/$1/port.c
