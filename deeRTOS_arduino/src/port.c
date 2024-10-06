@@ -4,8 +4,13 @@
 #include <avr/sfr_defs.h>
 #include <deeRTOS.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #define INT1_PIN PD3
+
+extern void* volatile * stack_pointers[32];
+void* volatile curr_task_sp;
+void* next_task_sp = NULL;
 
 void portOS_trigger_context_switch(void) {
   PORTD |= (1<<INT1_PIN);
@@ -18,9 +23,14 @@ void portOS_enable_interrupts(void) {
   sei();
 }
 
+void portOS_internal_threads_config(OSThread* volatile threads[], uint8_t threads_num) {
+
+  for(uint8_t i = 0 ; i < threads_num ; ++i) {
+    stack_pointers[i] = &threads[i]->sp;
+  }
+}
+
 void OS_hardware_specific_config(void) {
-
-
   //set timer
   TCNT1 = 65535 - (F_CPU/256)/1000;
   TCCR1B = (0b100<<CS10);
@@ -34,23 +44,54 @@ void OS_hardware_specific_config(void) {
   DDRD |= (1<<INT1_PIN);
 }
 
-void portOS_init_stack(uint32_t** sp, OSThreadHandler threadHandler,
+void portOS_init_stack(uint8_t** sp, OSThreadHandler threadHandler,
                        void* stkSto, uint32_t stkSize) {
+  *sp = (uint8_t*)((((uint32_t)stkSto + (stkSize-1))/8)*8);
+
+  uint16_t pc = (uint16_t)threadHandler;
+  **sp = (uint8_t)(pc & 0x00FF);
+  --(*sp);
+  **sp = (uint8_t)((pc>>8) & 0x00FF);
+  --(*sp);
+  **sp = 0;
+  --(*sp);
+  **sp = 0b10000000;
+  --(*sp);
+  **sp = 0;
+  --(*sp);
+  **sp = 0;
+  --(*sp);
+  **sp = 0;
+  --(*sp);
+  **sp = 0;
+  --(*sp);
+  **sp = 0;
+  --(*sp);
+  **sp = 0;
+  --(*sp);
+  **sp = 0;
+  --(*sp);
+  **sp = 0;
+  --(*sp);
+  **sp = 0;
+  --(*sp);
 }
 
 ISR(INT1_vect)
 {
-  extern void* volatile curr_task_sp;
-  extern void* volatile next_task_sp;
+  extern OSThread* volatile OS_curr_task;
+  extern OSThread* volatile OS_next_task;
 
-  extern void* volatile * stack_pointers[32];
-  extern int curr_task_num;
+  extern uint8_t OS_prev_thread_idx;
+  extern uint8_t OS_curr_thread_idx;
   extern int next_task_num;
+  extern int curr_task_num;
 
   cli();
+  next_task_sp = OS_next_task->sp;
   PORTD &= ~(1<<INT1_PIN);
-  if(curr_task_sp != NULL) {
-    
+
+  if(OS_curr_task != NULL) {
     __asm__ volatile (
         "in     r30, __SP_L__       \n\t"  
         "in     r31, __SP_H__       \n\t"  
@@ -60,11 +101,12 @@ ISR(INT1_vect)
         :
         : "r30", "r31"
     );
-    *stack_pointers[curr_task_num] = curr_task_sp;
+    *stack_pointers[OS_prev_thread_idx] = curr_task_sp;
   } 
 
-  curr_task_sp = next_task_sp;
-  curr_task_num = next_task_num;
+  OS_curr_task = OS_next_task;
+  curr_task_sp = OS_next_task->sp;
+  //curr_task_num = next_task_num;
 
   //restore context
   __asm__ __volatile__ ("lds    r26, next_task_sp");
