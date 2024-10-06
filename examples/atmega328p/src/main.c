@@ -38,16 +38,12 @@ void blink1() {
   uint8_t something = 10;
   while(true) {
     //Queue example
-    OS_delay(2000);
-    OS_queue_post(&queue, &something);
-    PORTB ^= (1<<GREEN_LED);
-
-    //Semaphore example
-    //OS_sem_wait(&sem);
-    //OS_delay(2000);
-    //PORTB ^= (1<<GREEN_LED);
-    //OS_sem_signal(&sem);
     //OS_delay(1000);
+    //OS_queue_post(&queue, &something);
+    //PORTB ^= (1<<GREEN_LED);
+    
+    PORTB ^= (1<<GREEN_LED);
+    OS_delay(4000);
   }
 }
 
@@ -55,22 +51,16 @@ void blink1() {
 uint8_t blink2_stack[BLINK2_STACK_SIZE] = {};
 OSThread blink2_tcb;
 void blink2() {
-  int zzz = 10;
   while(true) {
     //Queue example
-    OS_delay(1000);
-    uint8_t* recv = (uint8_t*)OS_queue_pend(&queue);
-
-    if(*recv == 10) {
-      PORTB ^= (1<<RED_LED);
-    }
-
-    //Semaphore example
-    //OS_delay(10);
-    //OS_sem_wait(&sem);
-    //OS_delay(1000);
-    //PORTB ^= (1<<RED_LED);
-    //OS_sem_signal(&sem);
+    //OS_delay(2000);
+    //uint8_t* recv = (uint8_t*)OS_queue_pend(&queue);
+    //if(*recv == 10) {
+    //  PORTB ^= (1<<RED_LED);
+    //}
+    
+    PORTB ^= (1<<RED_LED);
+    OS_delay(2000);
   }
 }
 
@@ -79,8 +69,8 @@ uint8_t blink3_stack[BLINK3_STACK_SIZE] = {};
 OSThread blink3_tcb;
 void blink3() {
   while(true) {
-    TOGGLE_YELLOW
-    OS_delay(500);
+    PORTB ^= (1<<YELLOW_LED);
+    OS_delay(1000);
   }
 }
 
@@ -93,10 +83,10 @@ int main() {
   OS_init();
   OS_create_thread(&blink1_tcb, 1, &blink1, blink1_stack, 
                 sizeof(blink1_stack));
-  OS_create_thread(&blink2_tcb, 1, &blink2, blink2_stack, 
+  OS_create_thread(&blink2_tcb, 2, &blink2, blink2_stack, 
                 sizeof(blink2_stack));
-  //OS_create_thread(&blink3_tcb, 1, &blink3, blink3_stack, 
-  //              sizeof(blink3_stack));
+  OS_create_thread(&blink3_tcb, 3, &blink3, blink3_stack, 
+                sizeof(blink3_stack));
   
   mutex = OS_create_mutex();
   queue = OS_create_queue((void**)buf, 10);

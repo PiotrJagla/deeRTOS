@@ -8,6 +8,8 @@
 #include <deeRTOS.h>
 #include <printf.h>
 
+#include <queue.h>
+
 #define LED1_BASE GPIOA
 #define LED1_PIN 8
 #define LED2_BASE GPIOB
@@ -15,16 +17,25 @@
 #define LED3_BASE GPIOB
 #define LED3_PIN 5
 
+OS_queue_handle queue;
+#define QUEUE_SIZE 10
+uint8_t* buf[QUEUE_SIZE];
+
 void CustomGpioInit();
 
 #define STACK_SIZE_TASK1 50
 uint32_t stack_task1[STACK_SIZE_TASK1];
 OSThread tcb_task1;
 void task1() {
+  uint8_t something = 10;
   while(1) {
+    //Queue example
+    //OS_delay(1000);
+    //OS_queue_post(&queue, &something);
+    //GpioTogglePin(LED1_BASE, LED1_PIN);
+    
     GpioTogglePin(LED1_BASE, LED1_PIN);
     OS_delay(1000);
-    //printf("Hello from taksk1\r\n");
   }
 }
 
@@ -33,8 +44,15 @@ uint32_t stack_task2[STACK_SIZE_TASK2];
 OSThread tcb_task2;
 void task2() {
   while(1) {
+    //Queue example
+    //OS_delay(2000);
+    //uint8_t* recv = (uint8_t*)OS_queue_pend(&queue);
+    //if(*recv == 10) {
+    //  GpioTogglePin(LED2_BASE, LED2_PIN);
+    //}
     GpioTogglePin(LED2_BASE, LED2_PIN);
     OS_delay(2000);
+
   }
 }
 
@@ -60,6 +78,8 @@ void main(void) {
   OS_create_thread(&tcb_task1, 1, &task1, stack_task1, sizeof(stack_task1));
   OS_create_thread(&tcb_task2, 2, &task2, stack_task2, sizeof(stack_task2));
   OS_create_thread(&tcb_task3, 3, &task3, stack_task3, sizeof(stack_task3));
+
+  queue = OS_create_queue((void**)buf, QUEUE_SIZE);
 
   __enable_irq();
 
