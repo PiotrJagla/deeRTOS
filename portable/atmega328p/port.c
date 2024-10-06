@@ -133,41 +133,63 @@ ISR(TIMER1_OVF_vect)
   portOS_enable_interrupts();
 }
 
+uint16_t sync_fetch_and_add(volatile uint16_t *ptr, uint16_t value) {
+    uint16_t old_value;
 
-void sync_fetch_and_add(int8_t* ptr, int8_t val) {
-  portOS_disable_interrupts();
-  *ptr += val;
-  portOS_enable_interrupts();
+    uint8_t sreg = SREG;
+    cli();             
+
+    old_value = *ptr;
+    *ptr = old_value + value;
+
+    SREG = sreg;
+
+    return old_value;
 }
 
-void sync_fetch_and_sub(int8_t* ptr, int8_t val) {
-  portOS_disable_interrupts();
-  *ptr -= val;
-  portOS_enable_interrupts();
+uint16_t sync_fetch_and_sub(volatile uint16_t *ptr, uint16_t value) {
+    uint16_t old_value;
+
+    uint8_t sreg = SREG;
+    cli();             
+
+    old_value = *ptr;
+    *ptr = old_value - value;
+
+    SREG = sreg;
+
+    return old_value;
 }
 
-bool sync_val_compare_and_swap(int8_t * ptr, int8_t old_val, int8_t new_val) {
-  bool res;
-  portOS_disable_interrupts();
-  if(*ptr == old_val) {
-    *ptr = new_val;
-    res = true;
-  } else {
-    res = false;
+uint16_t sync_val_compare_and_swap(volatile uint16_t *ptr, uint16_t oldval, uint16_t newval) {
+  uint16_t original_value;
+
+  uint8_t sreg = SREG;
+  cli();
+
+  original_value = *ptr;
+  if (original_value == oldval) {
+    *ptr = newval;
   }
-  portOS_enable_interrupts();
-  return res;
+
+  SREG = sreg;
+
+  return original_value;
 }
 
 bool sync_bool_compare_and_swap(bool * ptr, bool old_val, bool new_val) {
   bool res;
-  portOS_disable_interrupts();
+  uint8_t sreg = SREG;
+  cli();
+
   if(*ptr == old_val) {
     *ptr = new_val;
     res = true;
   } else {
     res = false;
   }
-  portOS_enable_interrupts();
+
+  SREG = sreg;
+
   return res;
 }

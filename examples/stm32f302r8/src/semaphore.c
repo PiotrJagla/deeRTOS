@@ -2,11 +2,11 @@
 #include <deeRTOS.h>
 
 
-extern bool sync_val_compare_and_swap(int8_t * ptr, int8_t old_val, int8_t new_val);
-extern void sync_fetch_and_sub(int8_t* ptr, int8_t val);
-extern void sync_fetch_and_add(int8_t* ptr, int8_t val);
+extern uint16_t sync_val_compare_and_swap(uint16_t * ptr, uint16_t old_val, uint16_t new_val);
+extern void sync_fetch_and_sub(uint16_t* ptr, uint16_t val);
+extern void sync_fetch_and_add(uint16_t* ptr, uint16_t val);
 
-OS_semaphore_handle OS_create_semaphore(int32_t init_val) {
+OS_semaphore_handle OS_create_semaphore(uint16_t init_val) {
   OS_semaphore_handle sh = {
     .val = init_val,
   };
@@ -14,7 +14,6 @@ OS_semaphore_handle OS_create_semaphore(int32_t init_val) {
 }
 
 void OS_sem_wait(OS_semaphore_handle* sh) {
-
   while(!sync_val_compare_and_swap(&sh->val, 0, 0)) {
     OS_delay(1);
   }

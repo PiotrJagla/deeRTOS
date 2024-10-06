@@ -2,14 +2,14 @@
 #include <queue.h>
 
 
-OS_queue_handle OS_queue_create(void** buf, uint32_t capacity) {
+OS_queue_handle OS_create_queue(void** buf, uint16_t capacity) {
   OS_queue_handle qh = {
     .buf = buf,
     .capacity = capacity,
     .last_element = 0,
     .first_element = 0,
     .size = 0,
-    .producer_sem = OS_create_semaphore((int32_t)capacity),
+    .producer_sem = OS_create_semaphore(capacity),
     .consumer_sem = OS_create_semaphore(0),
     .queue_mutate_mutex = OS_create_mutex(),
   };

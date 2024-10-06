@@ -1,13 +1,17 @@
+#include <stddef.h>
+#include <stdbool.h>
+
 #include <avr/common.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/sfr_defs.h>
 #include <util/delay.h>
-#include <stddef.h>
-#include <deeRTOS.h>
 
+#include <deeRTOS.h>
 #include <usartUtils.h>
-#include <stdbool.h>
+#include <mutex.h>
+#include <queue.h>
+#include <semaphore.h>
 
 #define BUILTIN_LED PB5
 #define GREEN_LED PB4
@@ -19,14 +23,31 @@
 
 #define INT1_PIN PD3
 
+OS_mutex_handle mutex;
+
+OS_queue_handle queue;
+uint8_t* buf[10];
+
+OS_semaphore_handle sem;
+
 
 #define BLINK1_STACK_SIZE 64
 uint8_t blink1_stack[BLINK1_STACK_SIZE] = {};
 OSThread blink1_tcb;
 void blink1() {
+  uint8_t something = 10;
   while(true) {
-    PORTB ^= (1<<GREEN_LED);
+    //Queue example
     OS_delay(2000);
+    OS_queue_post(&queue, &something);
+    PORTB ^= (1<<GREEN_LED);
+
+    //Semaphore example
+    //OS_sem_wait(&sem);
+    //OS_delay(2000);
+    //PORTB ^= (1<<GREEN_LED);
+    //OS_sem_signal(&sem);
+    //OS_delay(1000);
   }
 }
 
@@ -34,9 +55,22 @@ void blink1() {
 uint8_t blink2_stack[BLINK2_STACK_SIZE] = {};
 OSThread blink2_tcb;
 void blink2() {
+  int zzz = 10;
   while(true) {
-    PORTB ^= (1<<RED_LED);
+    //Queue example
     OS_delay(1000);
+    uint8_t* recv = (uint8_t*)OS_queue_pend(&queue);
+
+    if(*recv == 10) {
+      PORTB ^= (1<<RED_LED);
+    }
+
+    //Semaphore example
+    //OS_delay(10);
+    //OS_sem_wait(&sem);
+    //OS_delay(1000);
+    //PORTB ^= (1<<RED_LED);
+    //OS_sem_signal(&sem);
   }
 }
 
@@ -61,8 +95,13 @@ int main() {
                 sizeof(blink1_stack));
   OS_create_thread(&blink2_tcb, 1, &blink2, blink2_stack, 
                 sizeof(blink2_stack));
-  OS_create_thread(&blink3_tcb, 1, &blink3, blink3_stack, 
-                sizeof(blink3_stack));
+  //OS_create_thread(&blink3_tcb, 1, &blink3, blink3_stack, 
+  //              sizeof(blink3_stack));
+  
+  mutex = OS_create_mutex();
+  queue = OS_create_queue((void**)buf, 10);
+  sem = OS_create_semaphore(1);
+
   OS_start();
 
 

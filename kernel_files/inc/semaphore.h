@@ -5,10 +5,10 @@
 #include <stdbool.h>
 
 typedef struct {
-  int8_t val;
+  uint16_t val;
 } OS_semaphore_handle;
 
-OS_semaphore_handle OS_create_semaphore(int32_t init_val);
+OS_semaphore_handle OS_create_semaphore(uint16_t init_val);
 void OS_sem_wait(OS_semaphore_handle* sh);
 void OS_sem_signal(OS_semaphore_handle* sh);
 

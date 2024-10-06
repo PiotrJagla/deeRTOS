@@ -120,15 +120,15 @@ void systick_handler() {
 
 
 
-void sync_fetch_and_add(int8_t* ptr, int8_t val) {
+void sync_fetch_and_add(uint16_t* ptr, uint16_t val) {
   __sync_fetch_and_add(ptr, val);
 }
 
-void sync_fetch_and_sub(int8_t* ptr, int8_t val) {
+void sync_fetch_and_sub(uint16_t* ptr, uint16_t val) {
   __sync_fetch_and_sub(ptr, val);
 }
 
-bool sync_val_compare_and_swap(int8_t * ptr, int8_t old_val, int8_t new_val) {
+uint16_t sync_val_compare_and_swap(uint16_t * ptr, uint16_t old_val, uint16_t new_val) {
   return __sync_val_compare_and_swap(ptr, old_val, new_val);
 }
 
