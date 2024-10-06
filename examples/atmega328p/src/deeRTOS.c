@@ -3,10 +3,6 @@
 #include <stddef.h>
 #include <portmacro.h>
 
-#include <avr/common.h>
-#include <avr/io.h>
-#include <avr/interrupt.h>
-#include <avr/sfr_defs.h>
 
 extern void portOS_trigger_context_switch(void);
 extern void portOS_disable_interrupts(void);
@@ -167,3 +163,6 @@ void OS_sched() {
   OS_curr_thread_idx = next_task_idx;
   portOS_trigger_context_switch();
 }
+
+
+

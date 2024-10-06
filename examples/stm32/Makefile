@@ -15,7 +15,9 @@ LD_FLAGS=-T $(LINKER_FILE)
 SRCDIR=./src
 OBJDIR=./obj
 SRC=$(wildcard $(SRCDIR)/*.c)
+
 OBJ=$(patsubst $(SRCDIR)/%.c, $(OBJDIR)/%.o, $(SRC))
+
 
 PROGRAMMER=openocd
 PROGRAMMER_FLAGS=-f interface/stlink.cfg -f target/stm32f3x.cfg
