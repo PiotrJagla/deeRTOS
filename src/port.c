@@ -1,6 +1,7 @@
 #include <deeRTOS.h>
 #include <stm32f3xx.h>
 #include <stdint.h>
+#include <portmacro.h>
 
 void pendsv_handler(void) {
 	extern OSThread* volatile OS_curr_task;
@@ -43,6 +44,12 @@ void portOS_trigger_context_switch(void) {
   *(uint32_t*)0xE000ED04 |= (1 << 28); //trigger pendSV
 }
 
+
+void portOS_internal_threads_config(
+  OSThread* volatile threads[], uint8_t threads_num) {
+
+}
+
 void portOS_disable_interrupts(void) {
   __disable_irq();
 }
@@ -54,7 +61,7 @@ void OS_hardware_specific_config(void) {
   *(uint32_t volatile *)0xE000ED20 |= (0xFF << 16); //Set pendSV priority to lowest
 }
 
-void portOS_init_stack(uint32_t** sp, OSThreadHandler threadHandler,
+void portOS_init_stack(RegisterSize** sp, OSThreadHandler threadHandler,
                        void* stkSto, uint32_t stkSize) {
   *sp = (uint32_t*)((((uint32_t)stkSto + stkSize)/8)*8);
 
@@ -93,3 +100,15 @@ void portOS_init_stack(uint32_t** sp, OSThreadHandler threadHandler,
   --(*sp);
   **sp = 0x00000004U; // R4
 }
+
+#ifdef ISRTOS
+void systick_handler() {
+  extern void OS_tick(void);
+  extern void OS_sched(void);
+
+  OS_tick();
+  portOS_disable_interrupts();
+  OS_sched();
+  portOS_enable_interrupts();
+}
+#endif

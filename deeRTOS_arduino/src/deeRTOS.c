@@ -167,22 +167,3 @@ void OS_sched() {
   OS_curr_thread_idx = next_task_idx;
   portOS_trigger_context_switch();
 }
-
-ISR(TIMER1_OVF_vect)
-{
-  TCNT1 = 65535 - (F_CPU/256)/1000;
-  OS_tick();
-  portOS_disable_interrupts();
-  OS_sched();
-  portOS_enable_interrupts();
-}
-
-
-//#ifdef ISRTOS
-//void systick_handler() {
-//  OS_tick();
-//  portOS_disable_interrupts();
-//  OS_sched();
-//  portOS_enable_interrupts();
-//}
-//#endif

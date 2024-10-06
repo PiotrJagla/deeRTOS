@@ -115,3 +115,16 @@ ISR(INT1_vect)
   }
   sei();
 }
+
+
+ISR(TIMER1_OVF_vect)
+{
+  extern void OS_tick(void);
+  extern void OS_sched(void);
+
+  TCNT1 = 65535 - (F_CPU/256)/1000;
+  OS_tick();
+  portOS_disable_interrupts();
+  OS_sched();
+  portOS_enable_interrupts();
+}
