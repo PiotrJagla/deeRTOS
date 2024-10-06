@@ -1,36 +1,96 @@
 #include "deeRTOS.h"
 #include <stdbool.h>
 #include <stddef.h>
+#include <portmacro.h>
 
 #include <avr/common.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/sfr_defs.h>
 
-
 extern void portOS_trigger_context_switch(void);
 extern void portOS_disable_interrupts(void);
 extern void OS_hardware_specific_config(void);
 extern void portOS_enable_interrupts(void);
-extern void portOS_init_stack(uint8_t** sp, 
-    OSThreadHandler threadHandler, void* stkSto, uint32_t stkSize);
-extern void portOS_internal_threads_config(OSThread* volatile threads[], uint8_t threads_num);
+extern void portOS_internal_threads_config(
+  OSThread* volatile threads[], uint8_t threads_num);
+extern void portOS_init_stack(RegisterSize** sp,
+    OSThreadHandler threadHandler,void* stkSto, uint32_t stkSize);
+
+#define BUILTIN_LED PB5
+#define GREEN_LED PB4
+#define RED_LED PB3
+#define YELLOW_LED PB2
+
+#define LIGHT_YELLOW PORTB |= (1<<YELLOW_LED);
+#define TOGGLE_YELLOW PORTB ^= (1<<YELLOW_LED);
 
 void OS_sched();
-bool is_ready_on_index(uint32_t i);
 
 #define MAX_THREADS 32
 #define PRIORITIES 31
+
 OSThread* volatile OS_curr_task;
 OSThread* volatile OS_next_task;
 OSThread* OS_threads[MAX_THREADS+1];
 uint8_t OS_prio_threads_num[PRIORITIES] = {0};
 uint8_t OS_curr_prio_idx[PRIORITIES] = {0};
+
 uint8_t OS_threads_num = 0;
 uint8_t OS_curr_thread_idx = -1;
 uint8_t OS_prev_thread_idx = -1;
-uint32_t OS_thread_ready_msk = 0;
+ThreadReadyMask OS_thread_ready_msk = 0;
 
+
+
+RegisterSize stack_idleThread[50];
+OSThread idleThread;
+void OS_idle() {
+  while(1) {
+    __asm__("nop");
+  }
+}
+
+
+void set_ready_on_index(uint8_t i) {
+  OS_thread_ready_msk |= (1<<(THREAD_MASK_LAST_BIT - i));
+}
+
+void reset_ready_on_index(uint8_t i) {
+  OS_thread_ready_msk &= ~(1<<(THREAD_MASK_LAST_BIT - i));
+}
+
+bool is_ready_on_index(uint8_t i){
+  return OS_thread_ready_msk & (1<<(THREAD_MASK_LAST_BIT - i));
+}
+
+int OS_init() {
+  OS_create_thread(&idleThread, LAST_PRIORITY, &OS_idle, stack_idleThread, sizeof(stack_idleThread));
+  OS_curr_task = (void*)0;
+  OS_next_task = (void*)0;
+
+  OS_hardware_specific_config();
+  return 0;
+}
+
+void OS_start() {
+  for(uint8_t i = 0 ; i < OS_threads_num ; ++i) {
+    set_ready_on_index(i);
+  }
+  portOS_internal_threads_config(OS_threads, OS_threads_num);
+  portOS_disable_interrupts();
+  OS_sched();
+  portOS_enable_interrupts();
+}
+
+
+void OS_delay(uint32_t miliseconds){
+  portOS_disable_interrupts();
+  OS_curr_task->timeout = miliseconds;
+  reset_ready_on_index(OS_curr_thread_idx);
+  OS_sched();
+  portOS_enable_interrupts();
+}
 
 void insert_sorted(OSThread* t) {
   OS_threads[OS_threads_num] = t;
@@ -51,7 +111,7 @@ int OS_create_thread(OSThread* me, uint8_t priority,
     return 1;
   }
   
-  portOS_init_stack((uint8_t**)&me->sp, threadHandler, stkSto, stkSize);
+  portOS_init_stack((RegisterSize**)&me->sp, threadHandler, stkSto, stkSize);
   me->priority = priority;
   OS_prio_threads_num[priority]++;
 
@@ -61,56 +121,8 @@ int OS_create_thread(OSThread* me, uint8_t priority,
   return 0;
 }
 
-int next_task_num = 0;
-int curr_task_num = 0;
-void* volatile * stack_pointers[32] = {};
-
-
-extern void portOS_trigger_context_switch();
-
-
-void set_ready_on_index(uint32_t i) {
-  OS_thread_ready_msk |= (1<<(31-i));
-}
-
-uint32_t stack_idleThread[50];
-OSThread idleThread;
-void OS_idle() {
-  while(1) {
-    __asm__("nop");
-  }
-}
-
-int OS_init() {
-  OS_create_thread(&idleThread, 31, &OS_idle, stack_idleThread, sizeof(stack_idleThread));
-  OS_curr_task = (void*)0;
-  OS_next_task = (void*)0;
-
-  next_task_num = 0;
-  curr_task_num = 0;
-
-  OS_hardware_specific_config();
-  return 0;
-}
-
-void reset_ready_on_index(uint32_t i) {
-  OS_thread_ready_msk &= ~(1<<(31-i));
-}
-
-bool is_ready_on_index(uint32_t i){
-  return OS_thread_ready_msk & (1<<(31-i));
-}
-
-void OS_delay(uint32_t miliseconds){
-  portOS_disable_interrupts();
-  OS_curr_task->timeout = miliseconds;
-  reset_ready_on_index(OS_curr_thread_idx);
-  OS_sched();
-  portOS_enable_interrupts();
-}
-
 void OS_tick() {
-  for(int i = 0 ; i < OS_threads_num -1 ; ++i) {
+  for(uint8_t i = 0 ; i < OS_threads_num -1 ; ++i) {
     if(OS_threads[i]->timeout != 0) {
       --OS_threads[i]->timeout;
       if(OS_threads[i]->timeout == 0) {
@@ -122,9 +134,10 @@ void OS_tick() {
 
 void OS_sched() {
   uint8_t first_free_task = __builtin_clz(OS_thread_ready_msk);
-  first_free_task = 0;
   if(first_free_task == (OS_threads_num-1)){
     OS_next_task = OS_threads[first_free_task];
+
+    OS_prev_thread_idx = OS_curr_thread_idx; //for AVR
     OS_curr_thread_idx = first_free_task;
     portOS_trigger_context_switch();
     return;
@@ -133,7 +146,6 @@ void OS_sched() {
   uint8_t next_task_idx = 0;
   uint8_t curr_prio = -1;
   uint8_t curr_prio_offset = -1;
-
   for(uint8_t i = first_free_task ; i < OS_threads_num ; ++i) {
     if(OS_threads[i]->priority != curr_prio) {
       curr_prio = OS_threads[i]->priority;
@@ -144,13 +156,11 @@ void OS_sched() {
     uint8_t task_idx = curr_prio_offset + curr_prio_idx;
     OS_curr_prio_idx[curr_prio] = (++curr_prio_idx)%OS_prio_threads_num[curr_prio];
 
-    //if(is_ready_on_index(task_idx)) {
-    if(true) {
+    if(is_ready_on_index(task_idx)) {
       next_task_idx = task_idx;
       break;
     }
   }
-  next_task_idx = !next_task_idx; //MANUALLY ADDED - TO DELETE
   OS_next_task = OS_threads[next_task_idx];
 
   OS_prev_thread_idx = OS_curr_thread_idx; //for AVR
@@ -158,25 +168,21 @@ void OS_sched() {
   portOS_trigger_context_switch();
 }
 
-void OS_start() {
-  for(int i = 0 ; i < OS_threads_num ; ++i) {
-    set_ready_on_index(i);
-  }
-  portOS_internal_threads_config(OS_threads, OS_threads_num);
-  portOS_disable_interrupts();
-  OS_sched();
-  portOS_enable_interrupts();
-}
-
-
-uint32_t ticks = 0;
 ISR(TIMER1_OVF_vect)
 {
-  portOS_disable_interrupts();
-  ticks++;
   TCNT1 = 65535 - (F_CPU/256)/1000;
-
+  OS_tick();
+  portOS_disable_interrupts();
   OS_sched();
-  
   portOS_enable_interrupts();
 }
+
+
+//#ifdef ISRTOS
+//void systick_handler() {
+//  OS_tick();
+//  portOS_disable_interrupts();
+//  OS_sched();
+//  portOS_enable_interrupts();
+//}
+//#endif

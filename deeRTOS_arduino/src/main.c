@@ -19,25 +19,34 @@
 
 #define INT1_PIN PD3
 
+
 #define BLINK1_STACK_SIZE 64
 uint8_t blink1_stack[BLINK1_STACK_SIZE] = {};
-void* volatile blink1_sp;
 OSThread blink1_tcb;
 void blink1() {
   while(true) {
     PORTB ^= (1<<GREEN_LED);
-    _delay_ms(1000);
+    OS_delay(2000);
   }
 }
 
 #define BLINK2_STACK_SIZE 64
 uint8_t blink2_stack[BLINK2_STACK_SIZE] = {};
-void* volatile blink2_sp;
 OSThread blink2_tcb;
 void blink2() {
   while(true) {
     PORTB ^= (1<<RED_LED);
-    _delay_ms(500);
+    OS_delay(1000);
+  }
+}
+
+#define BLINK3_STACK_SIZE 64
+uint8_t blink3_stack[BLINK3_STACK_SIZE] = {};
+OSThread blink3_tcb;
+void blink3() {
+  while(true) {
+    TOGGLE_YELLOW
+    OS_delay(500);
   }
 }
 
@@ -48,12 +57,12 @@ int main() {
   //initUSART();
 
   OS_init();
-
-  OS_create_thread(&blink2_tcb, 1, &blink2, blink2_stack, 
-                sizeof(blink2_stack));
   OS_create_thread(&blink1_tcb, 1, &blink1, blink1_stack, 
                 sizeof(blink1_stack));
-
+  OS_create_thread(&blink2_tcb, 1, &blink2, blink2_stack, 
+                sizeof(blink2_stack));
+  OS_create_thread(&blink3_tcb, 1, &blink3, blink3_stack, 
+                sizeof(blink3_stack));
   OS_start();
 
 
@@ -61,9 +70,8 @@ int main() {
 
 
   while(1) {
-    _delay_ms(1000);
+    _delay_ms(100);
     PORTB ^= (1<<BUILTIN_LED);
-    PORTD |= (1<<INT1_PIN);
   }
 }
 
