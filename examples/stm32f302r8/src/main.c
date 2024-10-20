@@ -453,7 +453,7 @@ void task1() {
       if(gameMatrix[i] == 0) continue;
 
       writeColDiodes(i, gameMatrix[i]);
-      OS_delay(4);
+      OS_delay(2);
     }
   }
 }
