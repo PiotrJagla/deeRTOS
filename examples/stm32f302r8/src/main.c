@@ -80,6 +80,10 @@
 #define SEG_4_PIN 11
 #define SWITCH_BASE GPIOC
 #define SWITCH_PIN 13
+#define BUZZ_SWITCH_BASE GPIOA
+#define BUZZ_SWITCH_PIN 4
+#define BUZZ_LED_BASE GPIOB
+#define BUZZ_LED_PIN 0
 
 #define MATRIX_SIZE 8
 // ---------- END SNAKE MACROS --------
@@ -252,7 +256,7 @@ uint8_t digits[10] = {
 
 void clear_all_segments() {
   for(uint8_t i = 0 ; i < 7 ; ++i) {
-      write_seg_element[i](false);
+    write_seg_element[i](false);
   }
 }
 void light_digit_on_display(uint8_t digit, uint8_t display) {
@@ -287,152 +291,154 @@ uint8_t adc_buf[ADC_BUF_SIZE] = {};
 // ----------------- SNAKE GAME ------------
 uint32_t tick = 0;
 struct player{
-	int8_t xPositions[30];
-	int8_t yPositions[30];
-	int8_t xDir;
-	int8_t yDir;
-	int8_t points;
+  int8_t xPositions[30];
+  int8_t yPositions[30];
+  int8_t xDir;
+  int8_t yDir;
+  int8_t points;
 };
 uint8_t gameMatrix[8] = {0,32,0,0,0,0,0,0};
 struct player snake = {
-		{2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-		{4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-		1,0,1};
+  {2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+  {4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+1,0,1};
 uint8_t isInGame = 0;
 uint8_t dotCollected = 0;
+bool dotColledtedEvent = false;
 
 int isDotOnSnake(uint8_t col, uint8_t row) {
-	for(int8_t i = 0 ; i < SNAKE_MAX_SIZE ; ++i) {
-		if(col == snake.yPositions[i] && row == snake.xPositions[i]) {
-			return 1;
-		}
-	}
-	return 0;
+  for(int8_t i = 0 ; i < SNAKE_MAX_SIZE ; ++i) {
+    if(col == snake.yPositions[i] && row == snake.xPositions[i]) {
+      return 1;
+    }
+  }
+  return 0;
 }
 void pushRandomDot() {
-	uint8_t randVal = tick%64;
-	uint8_t randCol = randVal/MATRIX_SIZE;
-	uint8_t randRow = randVal%MATRIX_SIZE;
-	while(isDotOnSnake(randCol, randRow)) {
-		randVal+= 3;
-		randVal = randVal%64;
-		randCol = randVal/MATRIX_SIZE;
-		randRow = randVal%MATRIX_SIZE;
-	}
-	gameMatrix[randCol] |= (1<<randRow);
+  uint8_t randVal = tick%64;
+  uint8_t randCol = randVal/MATRIX_SIZE;
+  uint8_t randRow = randVal%MATRIX_SIZE;
+  while(isDotOnSnake(randCol, randRow)) {
+    randVal+= 3;
+    randVal = randVal%64;
+    randCol = randVal/MATRIX_SIZE;
+    randRow = randVal%MATRIX_SIZE;
+  }
+  gameMatrix[randCol] |= (1<<randRow);
 }
 
 void initSnakeGame(){
-	//reset game matrix
-	for(uint8_t i = 0 ; i < MATRIX_SIZE ; ++i) {
-		gameMatrix[i] = 0;
-	}
+  //reset game matrix
+  for(uint8_t i = 0 ; i < MATRIX_SIZE ; ++i) {
+    gameMatrix[i] = 0;
+  }
 
-	//reset snake positions
-	for(uint8_t i = 1; i < SNAKE_MAX_SIZE; ++i) {
-		snake.xPositions[i] = 0;
-		snake.yPositions[i] = 0;
-	}
-	snake.xPositions[0] = 2;
-	snake.yPositions[0] = 4;
-	snake.xDir = 1;
-	snake.yDir = 0;
-	snake.points = 1;
+  //reset snake positions
+  for(uint8_t i = 1; i < SNAKE_MAX_SIZE; ++i) {
+    snake.xPositions[i] = 0;
+    snake.yPositions[i] = 0;
+  }
+  snake.xPositions[0] = 2;
+  snake.yPositions[0] = 4;
+  snake.xDir = 1;
+  snake.yDir = 0;
+  snake.points = 1;
 
 
-	isInGame = 1;
-	pushRandomDot();
-	gameMatrix[snake.yPositions[0]] |= (1<<snake.xPositions[0]);
+  isInGame = 1;
+  pushRandomDot();
+  gameMatrix[snake.yPositions[0]] |= (1<<snake.xPositions[0]);
 }
 
 int8_t isOutOfBounds() {
-		if(snake.xPositions[0] >= MATRIX_SIZE) {
-			return 1;
-		} else if(snake.xPositions[0] < 0) {
-			return 1;
-		}
-		if(snake.yPositions[0] >= MATRIX_SIZE) {
-			return 1;
-		} else if(snake.yPositions[0] < 0) {
-			return 1;
-		}
-		return 0;
+  if(snake.xPositions[0] >= MATRIX_SIZE) {
+    return 1;
+  } else if(snake.xPositions[0] < 0) {
+    return 1;
+  }
+  if(snake.yPositions[0] >= MATRIX_SIZE) {
+    return 1;
+  } else if(snake.yPositions[0] < 0) {
+    return 1;
+  }
+  return 0;
 }
 int8_t didLose() {
-	if(isOutOfBounds()) {
-		return 1;
-	}
-	for(int8_t i = 1; i <snake.points ; ++i) {
-		if(snake.xPositions[0] == snake.xPositions[i] && snake.yPositions[0] == snake.yPositions[i]) {
-			return 1;
-		}
-	}
-	return 0;
+  if(isOutOfBounds()) {
+    return 1;
+  }
+  for(int8_t i = 1; i <snake.points ; ++i) {
+    if(snake.xPositions[0] == snake.xPositions[i] && snake.yPositions[0] == snake.yPositions[i]) {
+      return 1;
+    }
+  }
+  return 0;
 
 }
 
 void updateSnakeGame(){
 
-	if(isInGame == 1) {
-		if(dotCollected == 0) {
-			gameMatrix[snake.yPositions[snake.points - 1]] &= ~(1<<snake.xPositions[snake.points-1]);
-		} else {
-			snake.points++;
-		}
-		for(int8_t i = snake.points - 2 ; i >= 0; --i) {
-			snake.xPositions[i+1] = snake.xPositions[i];
-			snake.yPositions[i+1] = snake.yPositions[i];
-		}
-		snake.xPositions[0] += snake.xDir;
-		snake.yPositions[0] += snake.yDir;
+  if(isInGame == 1) {
+    if(dotCollected == 0) {
+      gameMatrix[snake.yPositions[snake.points - 1]] &= ~(1<<snake.xPositions[snake.points-1]);
+    } else {
+      snake.points++;
+    }
+    for(int8_t i = snake.points - 2 ; i >= 0; --i) {
+      snake.xPositions[i+1] = snake.xPositions[i];
+      snake.yPositions[i+1] = snake.yPositions[i];
+    }
+    snake.xPositions[0] += snake.xDir;
+    snake.yPositions[0] += snake.yDir;
 
 
-		//Is out of bounds
-		if(didLose() == 1) {
+    //Is out of bounds
+    if(didLose() == 1) {
       GpioWritePin(LED_R_BASE, LED_R_PIN, true);
       GpioWritePin(LED_G_BASE, LED_G_PIN, false);
       GpioWritePin(LED_W_BASE, LED_W_PIN, false);
-			isInGame = 0;
-		}
+      isInGame = 0;
+    }
 
 
-		//dot collected
-		if(gameMatrix[snake.yPositions[0]] & (1<<snake.xPositions[0])) {
-			pushRandomDot();
+    //dot collected
+    if(gameMatrix[snake.yPositions[0]] & (1<<snake.xPositions[0])) {
+      pushRandomDot();
 
-			dotCollected = 1;
-		} else {
-			dotCollected = 0;
-		}
+      dotCollected = 1;
+      dotColledtedEvent = true;
+    } else {
+      dotCollected = 0;
+    }
 
 
-		//Draw new position
-		gameMatrix[snake.yPositions[0]] |= (1<<snake.xPositions[0]);
-	}
+    //Draw new position
+    gameMatrix[snake.yPositions[0]] |= (1<<snake.xPositions[0]);
+  }
 }
 
 void updateDirection(uint8_t yJoystickVal, uint8_t xJoystickVal) {
-	if(snake.yDir == 0) {
-		if(xJoystickVal < 10) {
-				snake.yDir = 1;
-				snake.xDir = 0;
-		}
-		else if(xJoystickVal > 240) {
-			snake.yDir = -1;
-			snake.xDir = 0;
-		}
-	}
+  if(snake.yDir == 0) {
+    if(xJoystickVal < 10) {
+      snake.yDir = 1;
+      snake.xDir = 0;
+    }
+    else if(xJoystickVal > 240) {
+      snake.yDir = -1;
+      snake.xDir = 0;
+    }
+  }
 
-	if(snake.xDir == 0) {
-		if(yJoystickVal < 10) {
-				snake.xDir = -1;
-				snake.yDir = 0;
-			}
-			else if(yJoystickVal > 240) {
-				snake.xDir = 1;
-				snake.yDir = 0;
-			}
-	}
+  if(snake.xDir == 0) {
+    if(yJoystickVal < 10) {
+      snake.xDir = -1;
+      snake.yDir = 0;
+    }
+    else if(yJoystickVal > 240) {
+      snake.xDir = 1;
+      snake.yDir = 0;
+    }
+  }
 }
 
 // ----------------- END SNAKE GAME --------------
@@ -496,6 +502,36 @@ void task3() {
   }
 }
 
+#define STACK_SIZE_TASK4 128
+uint32_t stack_task4[STACK_SIZE_TASK4];
+OSThread tcb_task4;
+void task4() {
+
+  bool isBuzzin = false;
+  bool buzzSwitchLock = 1;
+  while(1) {
+    if(buzzSwitchLock && !GpioReadPin(BUZZ_SWITCH_BASE, BUZZ_SWITCH_PIN)) {
+      buzzSwitchLock = 0;
+      isBuzzin = !isBuzzin;
+      GpioWritePin(BUZZ_LED_BASE, BUZZ_LED_PIN, isBuzzin);
+    }
+    if(GpioReadPin(BUZZ_SWITCH_BASE, BUZZ_SWITCH_PIN)) {
+      buzzSwitchLock = 1;
+    }
+    if(dotColledtedEvent) {
+      GpioWritePin(LED_W_BASE, LED_W_PIN, true);
+      if(isBuzzin) {
+	GpioWritePin(BUZZ_BASE, BUZZ_PIN, true);
+      }
+      OS_delay(100);
+      GpioWritePin(BUZZ_BASE, BUZZ_PIN, false);
+      GpioWritePin(LED_W_BASE, LED_W_PIN, false);
+      dotColledtedEvent = false;
+    }
+    OS_delay(50);
+  }
+}
+
 void main(void) {
   system_init();
   usart_init(USART2);
@@ -507,21 +543,22 @@ void main(void) {
   DMAEnableCH1Interrupt();
   DMA_ADCInit((uint32_t)adc_buf, ADC_BUF_SIZE);
   ADCStart();
-  
+
   //--
   OS_init();
 
 
-  OS_create_thread(&tcb_task1, 2, &task1, stack_task1, sizeof(stack_task1));
-  OS_create_thread(&tcb_task2, 2, &task2, stack_task2, sizeof(stack_task2));
-  OS_create_thread(&tcb_task3, 1, &task3, stack_task3, sizeof(stack_task3));
+  OS_create_thread(&tcb_task1, 3, &task1, stack_task1, sizeof(stack_task1));
+  OS_create_thread(&tcb_task2, 3, &task2, stack_task2, sizeof(stack_task2));
+  OS_create_thread(&tcb_task3, 2, &task3, stack_task3, sizeof(stack_task3));
+  OS_create_thread(&tcb_task4, 1, &task4, stack_task4, sizeof(stack_task4));
 
   __enable_irq();
 
   OS_start();
 
   while(1) {
-    printf("BUTTON: %b \r\n", GpioReadPin(SWITCH_BASE, SWITCH_PIN));
+    printf("BUTTON: %b \r\n", GpioReadPin(BUZZ_SWITCH_BASE, BUZZ_SWITCH_PIN));
     GpioTogglePin(LED_W_BASE, LED_W_PIN);
     delay_ms(400);
   }
@@ -559,9 +596,13 @@ void CustomGpioInit() {
   GpioSetPinMode(LED_G_BASE,LED_G_PIN, GPIO_OUTPUT);
   GpioSetPinMode(LED_R_BASE,LED_R_PIN, GPIO_OUTPUT);
   GpioSetPinMode(BUZZ_BASE,BUZZ_PIN, GPIO_OUTPUT);
+  GpioSetPinMode(BUZZ_LED_BASE,BUZZ_LED_PIN, GPIO_OUTPUT);
 
   GpioSetPinMode(SWITCH_BASE, SWITCH_PIN, GPIO_INPUT);
   GpioSetPull(SWITCH_BASE, SWITCH_PIN, GPIO_PULLUP);
+
+  GpioSetPinMode(BUZZ_SWITCH_BASE, BUZZ_SWITCH_PIN, GPIO_INPUT);
+  GpioSetPull(BUZZ_SWITCH_BASE, BUZZ_SWITCH_PIN, GPIO_PULLUP);
 
   EnableADC_IN1_PA0();
   EnableADC_IN6_PC0();
