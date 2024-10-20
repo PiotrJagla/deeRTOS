@@ -10,7 +10,6 @@
 
 #include <queue.h>
 
-  //GpioSetPinMode(LED3_BASE, LED3_PIN, GPIO_OUTPUT);
 // ---------- SNAKE MACROS --------
 #define JOYSTICK_X_BASE GPIOC
 #define JOYSTICK_X_PIN 0
@@ -80,27 +79,195 @@
 #define SEG_3_PIN 11
 // ---------- END SNAKE MACROS --------
 
+void writeC1(bool value) {
+  GpioWritePin(C1_BASE, C1_PIN, value);
+}
+void writeC2(bool value) {
+  GpioWritePin(C2_BASE, C2_PIN, value);
+}
+void writeC3(bool value) {
+  GpioWritePin(C3_BASE, C3_PIN, value);
+}
+void writeC4(bool value) {
+  GpioWritePin(C4_BASE, C4_PIN, value);
+}
+void writeC5(bool value) {
+  GpioWritePin(C5_BASE, C5_PIN, value);
+}
+void writeC6(bool value) {
+  GpioWritePin(C6_BASE, C6_PIN, value);
+}
+void writeC7(bool value) {
+  GpioWritePin(C7_BASE, C7_PIN, value);
+}
+void writeC8(bool value) {
+  GpioWritePin(C8_BASE, C8_PIN, value);
+}
+void writeR1(bool value) {
+  GpioWritePin(R1_BASE, R1_PIN, value);
+}
+void writeR2(bool value) {
+  GpioWritePin(R2_BASE, R2_PIN, value);
+}
+void writeR3(bool value) {
+  GpioWritePin(R3_BASE, R3_PIN, value);
+}
+void writeR4(bool value) {
+  GpioWritePin(R4_BASE, R4_PIN, value);
+}
+void writeR5(bool value) {
+  GpioWritePin(R5_BASE, R5_PIN, value);
+}
+void writeR6(bool value) {
+  GpioWritePin(R6_BASE, R6_PIN, value);
+}
+void writeR7(bool value) {
+  GpioWritePin(R7_BASE, R7_PIN, value);
+}
+void writeR8(bool value) {
+  GpioWritePin(R8_BASE, R8_PIN, value);
+}
+
+void (*writeRows[])(bool) = {
+  writeR1,
+  writeR2,
+  writeR3,
+  writeR4,
+  writeR5,
+  writeR6,
+  writeR7,
+  writeR8,
+};
+void (*writeCols[])(bool) = {
+  writeC1,
+  writeC2,
+  writeC3,
+  writeC4,
+  writeC5,
+  writeC6,
+  writeC7,
+  writeC8,
+};
+
+void writeCol(uint8_t col, bool value) {
+  for(int8_t i = 0 ; i < 8 ; ++i) {
+    writeCols[i](false);
+  }
+  writeCols[col](value);
+  //writeC1(false);
+  //writeC2(false);
+  //writeC3(false);
+  //writeC4(false);
+  //writeC5(false);
+  //writeC6(false);
+  //writeC7(false);
+  //writeC8(false);
+  //switch(col) {
+  //case 0:
+  //  writeC1(true);
+  //  break;
+  //case 1:
+  //  writeC2(true);
+  //  break;
+  //case 2:
+  //  writeC3(true);
+  //  break;
+  //case 3:
+  //  writeC4(true);
+  //  break;
+  //case 4:
+  //  writeC5(true);
+  //  break;
+  //case 5:
+  //  writeC6(true);
+  //  break;
+  //case 6:
+  //  writeC7(true);
+  //  break;
+  //case 7:
+  //  writeC8(true);
+  //  break;
+  //}
+}
+
+void writeColDiodes(uint8_t col, uint8_t diodes) {
+  writeCol(col, true);
+  for(int8_t i = 0 ; i < 8 ; ++i) {
+    writeRows[i](true);
+  }
+
+  for(uint8_t i = 0 ; i < 8 ; ++i) {
+    if(diodes & (1<<i)) {
+      writeRows[i](false);
+    }
+  }
+  //writeCol(col, true);
+  //writeR1(true);
+  //writeR2(true);
+  //writeR3(true);
+  //writeR4(true);
+  //writeR5(true);
+  //writeR6(true);
+  //writeR7(true);
+  //writeR8(true);
+  //for(uint8_t i = 0 ; i < 8 ; ++i) {
+  //  if(diodes & (1<<i)) {
+  //    switch(i) {
+  //    case 0:
+  //      writeR1(false);
+  //      break;
+  //    case 1:
+  //      writeR2(false);
+  //      break;
+  //    case 2:
+  //      writeR3(false);
+  //      break;
+  //    case 3:
+  //      writeR4(false);
+  //      break;
+  //    case 4:
+  //      writeR5(false);
+  //      break;
+  //    case 5:
+  //      writeR6(false);
+  //      break;
+  //    case 6:
+  //      writeR7(false);
+  //      break;
+  //    case 7:
+  //      writeR8(false);
+  //      break;
+  //    }
+  //  }
+  //}
+}
+
+
 void CustomGpioInit();
 
-bool matrix[][8] = {
-  {0,0,0,0,0,0,0,0},
-  {0,0,0,0,0,0,0,0},
-  {0,0,0,0,0,0,0,0},
-  {0,0,0,0,0,0,0,0},
-  {0,0,0,0,0,0,0,0},
-  {0,0,0,0,0,0,0,0},
-  {0,0,0,0,0,0,0,0},
-  {0,0,0,0,0,0,0,0}
+uint8_t matrix[] = {
+  0b00000000,
+  0b00000000,
+  0b00000000,
+  0b00110000,
+  0b00110000,
+  0b00001000,
+  0b00100010,
+  0b00111110
 };
 
 #define STACK_SIZE_TASK1 128
 uint32_t stack_task1[STACK_SIZE_TASK1];
 OSThread tcb_task1;
 void task1() {
-  uint8_t something = 10;
   while(1) {
+    for(uint8_t i = 0 ; i < 8 ; ++i) {
+      if(matrix[i] == 0) continue;
+
+      writeColDiodes(i, matrix[i]);
+      OS_delay(4);
+    }
     //GpioTogglePin(LED1_BASE, LED1_PIN);
-    OS_delay(1000);
   }
 }
 
@@ -109,8 +276,8 @@ uint32_t stack_task2[STACK_SIZE_TASK2];
 OSThread tcb_task2;
 void task2() {
   while(1) {
-    //GpioTogglePin(LED2_BASE, LED2_PIN);
-    OS_delay(2000);
+    GpioTogglePin(GPIO_LD2_BASE, GPIO_LD2_PIN);
+    OS_delay(1000);
 
   }
 }
@@ -124,7 +291,7 @@ void main(void) {
 
 
   OS_create_thread(&tcb_task1, 1, &task1, stack_task1, sizeof(stack_task1));
-  OS_create_thread(&tcb_task2, 2, &task2, stack_task2, sizeof(stack_task2));
+  OS_create_thread(&tcb_task2, 1, &task2, stack_task2, sizeof(stack_task2));
 
   __enable_irq();
 
