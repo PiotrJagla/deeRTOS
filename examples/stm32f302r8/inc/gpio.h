@@ -32,6 +32,8 @@ void GpioWritePin(GPIO_TypeDef* gpiox, uint8_t gpioPin, bool value);
 void EnableTim16_CH1_PB8();
 void EnableADC_IN1_PA0();
 void EnableADC_IN2_PA1();
+void EnableADC_IN6_PC0();
+void EnableADC_IN7_PC1();
 void enable_i2c();
 void enable_spi();
 

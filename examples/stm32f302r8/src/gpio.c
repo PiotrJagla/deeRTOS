@@ -1,6 +1,24 @@
 #include "gpio.h"
 #include "stm32f302x8.h"
 
+uint8_t pin_to_pudpr[] = {
+  GPIO_PUPDR_PUPDR0_Pos,
+  GPIO_PUPDR_PUPDR1_Pos,
+  GPIO_PUPDR_PUPDR2_Pos,
+  GPIO_PUPDR_PUPDR3_Pos,
+  GPIO_PUPDR_PUPDR4_Pos,
+  GPIO_PUPDR_PUPDR5_Pos,
+  GPIO_PUPDR_PUPDR6_Pos,
+  GPIO_PUPDR_PUPDR7_Pos,
+  GPIO_PUPDR_PUPDR8_Pos,
+  GPIO_PUPDR_PUPDR9_Pos,
+  GPIO_PUPDR_PUPDR10_Pos,
+  GPIO_PUPDR_PUPDR11_Pos,
+  GPIO_PUPDR_PUPDR12_Pos,
+  GPIO_PUPDR_PUPDR13_Pos,
+  GPIO_PUPDR_PUPDR14_Pos,
+  GPIO_PUPDR_PUPDR15_Pos,
+};
 uint8_t pin_to_moder[] = {
   GPIO_MODER_MODER0_Pos,
   GPIO_MODER_MODER1_Pos,
@@ -48,7 +66,7 @@ void GpioResetPin(GPIO_TypeDef* gpiox, uint8_t gpioPin) {
 }
 
 void GpioSetPull(GPIO_TypeDef* gpiox, unsigned long gpioPin, uint8_t mode) {
-  gpiox->PUPDR |= (mode<<gpioPin);
+  gpiox->PUPDR |= (mode<<pin_to_pudpr[gpioPin]);
 }
 
 void GpioWritePin(GPIO_TypeDef* gpiox, uint8_t gpioPin, bool value) {
@@ -109,6 +127,14 @@ void EnableADC_IN1_PA0() {
 
 void EnableADC_IN2_PA1() {
   GpioSetPinMode(GPIOA, GPIO_MODER_MODER1_Pos, GPIO_ANALOG_MODE);
+}
+
+void EnableADC_IN6_PC0() {
+  GpioSetPinMode(GPIOC, GPIO_MODER_MODER0_Pos, GPIO_ANALOG_MODE);
+}
+
+void EnableADC_IN7_PC1() {
+  GpioSetPinMode(GPIOC, GPIO_MODER_MODER1_Pos, GPIO_ANALOG_MODE);
 }
 
 

@@ -7,8 +7,9 @@
 #include <stdint.h>
 #include <deeRTOS.h>
 #include <printf.h>
+#include <adc.h>
+#include <dma.h>
 
-#include <queue.h>
 
 // ---------- SNAKE MACROS --------
 #define JOYSTICK_X_BASE GPIOC
@@ -73,11 +74,16 @@
 #define SEG_G_PIN 9
 #define SEG_1_BASE GPIOC
 #define SEG_1_PIN 5
-#define SEG_2_BASE GPIOA
-#define SEG_2_PIN 12
 #define SEG_3_BASE GPIOA
-#define SEG_3_PIN 11
+#define SEG_3_PIN 12
+#define SEG_4_BASE GPIOA
+#define SEG_4_PIN 11
+#define SWITCH_BASE GPIOC
+#define SWITCH_PIN 13
+
+#define MATRIX_SIZE 8
 // ---------- END SNAKE MACROS --------
+
 
 void writeC1(bool value) {
   GpioWritePin(C1_BASE, C1_PIN, value);
@@ -154,43 +160,16 @@ void writeCol(uint8_t col, bool value) {
     writeCols[i](false);
   }
   writeCols[col](value);
-  //writeC1(false);
-  //writeC2(false);
-  //writeC3(false);
-  //writeC4(false);
-  //writeC5(false);
-  //writeC6(false);
-  //writeC7(false);
-  //writeC8(false);
-  //switch(col) {
-  //case 0:
-  //  writeC1(true);
-  //  break;
-  //case 1:
-  //  writeC2(true);
-  //  break;
-  //case 2:
-  //  writeC3(true);
-  //  break;
-  //case 3:
-  //  writeC4(true);
-  //  break;
-  //case 4:
-  //  writeC5(true);
-  //  break;
-  //case 5:
-  //  writeC6(true);
-  //  break;
-  //case 6:
-  //  writeC7(true);
-  //  break;
-  //case 7:
-  //  writeC8(true);
-  //  break;
-  //}
 }
 
+void clear_whole_row() {
+  for(uint8_t i = 0 ; i < 8 ; ++i) {
+    writeRows[i](true);
+  }
+}
 void writeColDiodes(uint8_t col, uint8_t diodes) {
+  clear_whole_row();
+
   writeCol(col, true);
   for(int8_t i = 0 ; i < 8 ; ++i) {
     writeRows[i](true);
@@ -201,73 +180,275 @@ void writeColDiodes(uint8_t col, uint8_t diodes) {
       writeRows[i](false);
     }
   }
-  //writeCol(col, true);
-  //writeR1(true);
-  //writeR2(true);
-  //writeR3(true);
-  //writeR4(true);
-  //writeR5(true);
-  //writeR6(true);
-  //writeR7(true);
-  //writeR8(true);
-  //for(uint8_t i = 0 ; i < 8 ; ++i) {
-  //  if(diodes & (1<<i)) {
-  //    switch(i) {
-  //    case 0:
-  //      writeR1(false);
-  //      break;
-  //    case 1:
-  //      writeR2(false);
-  //      break;
-  //    case 2:
-  //      writeR3(false);
-  //      break;
-  //    case 3:
-  //      writeR4(false);
-  //      break;
-  //    case 4:
-  //      writeR5(false);
-  //      break;
-  //    case 5:
-  //      writeR6(false);
-  //      break;
-  //    case 6:
-  //      writeR7(false);
-  //      break;
-  //    case 7:
-  //      writeR8(false);
-  //      break;
-  //    }
-  //  }
-  //}
 }
 
 
 void CustomGpioInit();
 
-uint8_t matrix[] = {
-  0b00000000,
-  0b00000000,
-  0b00000000,
-  0b00110000,
-  0b00110000,
-  0b00001000,
-  0b00100010,
-  0b00111110
+void writeA(bool value) {
+  GpioWritePin(SEG_A_BASE, SEG_A_PIN, value);
+}
+void writeB(bool value) {
+  GpioWritePin(SEG_B_BASE, SEG_B_PIN, value);
+}
+void writeC(bool value) {
+  GpioWritePin(SEG_C_BASE, SEG_C_PIN, value);
+}
+void writeD(bool value) {
+  GpioWritePin(SEG_D_BASE, SEG_D_PIN, value);
+}
+void writeE(bool value) {
+  GpioWritePin(SEG_E_BASE, SEG_E_PIN, value);
+}
+void writeF(bool value) {
+  GpioWritePin(SEG_F_BASE, SEG_F_PIN, value);
+}
+void writeG(bool value) {
+  GpioWritePin(SEG_G_BASE, SEG_G_PIN, value);
+}
+void write_SEG1(bool value) {
+  GpioWritePin(SEG_1_BASE, SEG_1_PIN, value);
+}
+void write_SEG2(bool value) {
+  // NONE
+}
+void write_SEG3(bool value) {
+  GpioWritePin(SEG_3_BASE, SEG_3_PIN, value);
+}
+void write_SEG4(bool value) {
+  GpioWritePin(SEG_4_BASE, SEG_4_PIN, value);
+}
+
+void (*write_seg_element[])(bool) = {
+  writeA,
+  writeB,
+  writeC,
+  writeD,
+  writeE,
+  writeF,
+  writeG,
 };
+
+void (*write_seg[])(bool) = {
+  write_SEG1,
+  write_SEG2,
+  write_SEG3,
+  write_SEG4,
+};
+
+uint8_t digits[10] = {
+  0b0111111,
+  0b0000110,
+  0b1011011,
+  0b1001111,
+  0b1100110,
+  0b1101101,
+  0b1111101,
+  0b0000111,
+  0b1111111,
+  0b1101111
+  // G, F, E, D, D, B , A
+};
+
+void clear_all_segments() {
+  for(uint8_t i = 0 ; i < 7 ; ++i) {
+      write_seg_element[i](false);
+  }
+}
+void light_digit_on_display(uint8_t digit, uint8_t display) {
+  clear_all_segments();
+
+  for(uint8_t i = 0 ; i < 4 ; ++i) {
+    if((display - 1) == i) {
+      write_seg[i](false);
+    } else {
+      write_seg[i](true);
+    }
+  }
+
+  for(uint8_t i = 0 ; i < 7 ; ++i) {
+    if(digits[digit] & (1<<i)) {
+      write_seg_element[i](true);
+    } else {
+      write_seg_element[i](false);
+    }
+  }
+}
+
+//ADC
+#define ADC_BUF_SIZE 3
+#define ADC_X 0
+#define ADC_Y 1
+#define ADC_POTENTIOMETER 2
+uint8_t adc_buf[ADC_BUF_SIZE] = {};
+
+#define SNAKE_MAX_SIZE 30
+
+// ----------------- SNAKE GAME ------------
+uint32_t tick = 0;
+struct player{
+	int8_t xPositions[30];
+	int8_t yPositions[30];
+	int8_t xDir;
+	int8_t yDir;
+	int8_t points;
+};
+uint8_t gameMatrix[8] = {0,32,0,0,0,0,0,0};
+struct player snake = {
+		{2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+		{4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+		1,0,1};
+uint8_t isInGame = 0;
+uint8_t dotCollected = 0;
+
+int isDotOnSnake(uint8_t col, uint8_t row) {
+	for(int8_t i = 0 ; i < SNAKE_MAX_SIZE ; ++i) {
+		if(col == snake.yPositions[i] && row == snake.xPositions[i]) {
+			return 1;
+		}
+	}
+	return 0;
+}
+void pushRandomDot() {
+	uint8_t randVal = tick%64;
+	uint8_t randCol = randVal/MATRIX_SIZE;
+	uint8_t randRow = randVal%MATRIX_SIZE;
+	while(isDotOnSnake(randCol, randRow)) {
+		randVal+= 3;
+		randVal = randVal%64;
+		randCol = randVal/MATRIX_SIZE;
+		randRow = randVal%MATRIX_SIZE;
+	}
+	gameMatrix[randCol] |= (1<<randRow);
+}
+
+void initSnakeGame(){
+	//reset game matrix
+	for(uint8_t i = 0 ; i < MATRIX_SIZE ; ++i) {
+		gameMatrix[i] = 0;
+	}
+
+	//reset snake positions
+	for(uint8_t i = 1; i < SNAKE_MAX_SIZE; ++i) {
+		snake.xPositions[i] = 0;
+		snake.yPositions[i] = 0;
+	}
+	snake.xPositions[0] = 2;
+	snake.yPositions[0] = 4;
+	snake.xDir = 1;
+	snake.yDir = 0;
+	snake.points = 1;
+
+
+	isInGame = 1;
+	pushRandomDot();
+	gameMatrix[snake.yPositions[0]] |= (1<<snake.xPositions[0]);
+}
+
+int8_t isOutOfBounds() {
+		if(snake.xPositions[0] >= MATRIX_SIZE) {
+			return 1;
+		} else if(snake.xPositions[0] < 0) {
+			return 1;
+		}
+		if(snake.yPositions[0] >= MATRIX_SIZE) {
+			return 1;
+		} else if(snake.yPositions[0] < 0) {
+			return 1;
+		}
+		return 0;
+}
+int8_t didLose() {
+	if(isOutOfBounds()) {
+		return 1;
+	}
+	for(int8_t i = 1; i <snake.points ; ++i) {
+		if(snake.xPositions[0] == snake.xPositions[i] && snake.yPositions[0] == snake.yPositions[i]) {
+			return 1;
+		}
+	}
+	return 0;
+
+}
+
+void updateSnakeGame(){
+
+	if(isInGame == 1) {
+		if(dotCollected == 0) {
+			gameMatrix[snake.yPositions[snake.points - 1]] &= ~(1<<snake.xPositions[snake.points-1]);
+		} else {
+			snake.points++;
+		}
+		for(int8_t i = snake.points - 2 ; i >= 0; --i) {
+			snake.xPositions[i+1] = snake.xPositions[i];
+			snake.yPositions[i+1] = snake.yPositions[i];
+		}
+		snake.xPositions[0] += snake.xDir;
+		snake.yPositions[0] += snake.yDir;
+
+
+		//Is out of bounds
+		if(didLose() == 1) {
+      GpioWritePin(LED_R_BASE, LED_R_PIN, true);
+      GpioWritePin(LED_G_BASE, LED_G_PIN, false);
+      GpioWritePin(LED_W_BASE, LED_W_PIN, false);
+			isInGame = 0;
+		}
+
+
+		//dot collected
+		if(gameMatrix[snake.yPositions[0]] & (1<<snake.xPositions[0])) {
+			pushRandomDot();
+
+			dotCollected = 1;
+		} else {
+			dotCollected = 0;
+		}
+
+
+		//Draw new position
+		gameMatrix[snake.yPositions[0]] |= (1<<snake.xPositions[0]);
+	}
+}
+
+void updateDirection(uint8_t yJoystickVal, uint8_t xJoystickVal) {
+	if(snake.yDir == 0) {
+		if(xJoystickVal < 10) {
+				snake.yDir = 1;
+				snake.xDir = 0;
+		}
+		else if(xJoystickVal > 240) {
+			snake.yDir = -1;
+			snake.xDir = 0;
+		}
+	}
+
+	if(snake.xDir == 0) {
+		if(yJoystickVal < 10) {
+				snake.xDir = -1;
+				snake.yDir = 0;
+			}
+			else if(yJoystickVal > 240) {
+				snake.xDir = 1;
+				snake.yDir = 0;
+			}
+	}
+}
+
+// ----------------- END SNAKE GAME --------------
 
 #define STACK_SIZE_TASK1 128
 uint32_t stack_task1[STACK_SIZE_TASK1];
 OSThread tcb_task1;
 void task1() {
   while(1) {
-    for(uint8_t i = 0 ; i < 8 ; ++i) {
-      if(matrix[i] == 0) continue;
+    for(uint8_t i = 0 ; i < MATRIX_SIZE ; ++i) {
+      tick++;
+      if(gameMatrix[i] == 0) continue;
 
-      writeColDiodes(i, matrix[i]);
+      writeColDiodes(i, gameMatrix[i]);
       OS_delay(4);
     }
-    //GpioTogglePin(LED1_BASE, LED1_PIN);
   }
 }
 
@@ -276,9 +457,42 @@ uint32_t stack_task2[STACK_SIZE_TASK2];
 OSThread tcb_task2;
 void task2() {
   while(1) {
-    GpioTogglePin(GPIO_LD2_BASE, GPIO_LD2_PIN);
-    OS_delay(1000);
+    //light_digit_on_display(adc_buf[ADC_POTENTIOMETER]/26, 1);
+    //OS_delay(5);
+    light_digit_on_display(snake.points/10, 3);
+    OS_delay(5);
+    light_digit_on_display(snake.points%10, 4);
+    OS_delay(5);
+  }
+}
 
+#define STACK_SIZE_TASK3 128
+uint32_t stack_task3[STACK_SIZE_TASK3];
+OSThread tcb_task3;
+void task3() {
+
+  uint8_t switchLock = 1;
+  initSnakeGame();
+  GpioWritePin(LED_R_BASE, LED_R_PIN, false);
+  GpioWritePin(LED_G_BASE, LED_G_PIN, true);
+  GpioWritePin(LED_W_BASE, LED_W_PIN, false);
+
+  while(1) {
+    if(switchLock == 1 && !GpioReadPin(SWITCH_BASE, SWITCH_PIN)) {
+      switchLock = 0;
+      initSnakeGame();
+      GpioWritePin(LED_R_BASE, LED_R_PIN, false);
+      GpioWritePin(LED_G_BASE, LED_G_PIN, true);
+      GpioWritePin(LED_W_BASE, LED_W_PIN, false);
+    }
+    if(GpioReadPin(SWITCH_BASE, SWITCH_PIN)) {
+      switchLock = 1;
+    }
+
+    updateDirection(adc_buf[ADC_X], adc_buf[ADC_Y]);
+    updateSnakeGame();
+
+    OS_delay(400);
   }
 }
 
@@ -287,25 +501,36 @@ void main(void) {
   usart_init(USART2);
   GpioInit();
   CustomGpioInit();
+  //ADC CONFIG
+
+  ADC_DMAConfig();
+  DMAEnableCH1Interrupt();
+  DMA_ADCInit((uint32_t)adc_buf, ADC_BUF_SIZE);
+  ADCStart();
+  
+  //--
   OS_init();
 
 
-  OS_create_thread(&tcb_task1, 1, &task1, stack_task1, sizeof(stack_task1));
-  OS_create_thread(&tcb_task2, 1, &task2, stack_task2, sizeof(stack_task2));
+  OS_create_thread(&tcb_task1, 2, &task1, stack_task1, sizeof(stack_task1));
+  OS_create_thread(&tcb_task2, 2, &task2, stack_task2, sizeof(stack_task2));
+  OS_create_thread(&tcb_task3, 1, &task3, stack_task3, sizeof(stack_task3));
 
   __enable_irq();
 
   OS_start();
 
   while(1) {
-    delay_ms(1000);
+    printf("BUTTON: %b \r\n", GpioReadPin(SWITCH_BASE, SWITCH_PIN));
+    GpioTogglePin(LED_W_BASE, LED_W_PIN);
+    delay_ms(400);
   }
 }
 
 
 void CustomGpioInit() {
+  GpioSetPinMode(SEG_4_BASE,SEG_4_PIN, GPIO_OUTPUT);
   GpioSetPinMode(SEG_3_BASE,SEG_3_PIN, GPIO_OUTPUT);
-  GpioSetPinMode(SEG_2_BASE,SEG_2_PIN, GPIO_OUTPUT);
   GpioSetPinMode(SEG_1_BASE,SEG_1_PIN, GPIO_OUTPUT);
   GpioSetPinMode(SEG_G_BASE,SEG_G_PIN, GPIO_OUTPUT);
   GpioSetPinMode(SEG_F_BASE,SEG_F_PIN, GPIO_OUTPUT);
@@ -334,9 +559,13 @@ void CustomGpioInit() {
   GpioSetPinMode(LED_G_BASE,LED_G_PIN, GPIO_OUTPUT);
   GpioSetPinMode(LED_R_BASE,LED_R_PIN, GPIO_OUTPUT);
   GpioSetPinMode(BUZZ_BASE,BUZZ_PIN, GPIO_OUTPUT);
-  GpioSetPinMode(POTENTIOMETR_BASE,POTENTIOMETR_PIN, GPIO_OUTPUT);
-  GpioSetPinMode(JOYSTICK_Y_BASE,JOYSTICK_Y_PIN, GPIO_OUTPUT);
-  GpioSetPinMode(JOYSTICK_X_BASE,JOYSTICK_X_PIN, GPIO_OUTPUT);
 
-  GpioLD2EnableOutput();
+  GpioSetPinMode(SWITCH_BASE, SWITCH_PIN, GPIO_INPUT);
+  GpioSetPull(SWITCH_BASE, SWITCH_PIN, GPIO_PULLUP);
+
+  EnableADC_IN1_PA0();
+  EnableADC_IN6_PC0();
+  EnableADC_IN7_PC1();
+
+  //GpioLD2EnableOutput();
 }
