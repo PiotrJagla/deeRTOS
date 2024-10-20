@@ -463,12 +463,12 @@ uint32_t stack_task2[STACK_SIZE_TASK2];
 OSThread tcb_task2;
 void task2() {
   while(1) {
-    //light_digit_on_display(adc_buf[ADC_POTENTIOMETER]/26, 1);
-    //OS_delay(5);
+    light_digit_on_display(adc_buf[ADC_POTENTIOMETER]/26, 1);
+    OS_delay(4);
     light_digit_on_display(snake.points/10, 3);
-    OS_delay(5);
+    OS_delay(4);
     light_digit_on_display(snake.points%10, 4);
-    OS_delay(5);
+    OS_delay(4);
   }
 }
 
@@ -498,7 +498,7 @@ void task3() {
     updateDirection(adc_buf[ADC_X], adc_buf[ADC_Y]);
     updateSnakeGame();
 
-    OS_delay(400);
+    OS_delay(300 + adc_buf[ADC_POTENTIOMETER]/2);
   }
 }
 
