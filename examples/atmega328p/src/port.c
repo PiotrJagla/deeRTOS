@@ -54,31 +54,31 @@ void portOS_init_stack(RegisterSize** sp, OSThreadHandler threadHandler,
   *sp = (RegisterSize*)((((uint32_t)stkSto + (stkSize-1))/8)*8);
 
   uint16_t pc = (uint16_t)threadHandler;
-  **sp = (uint8_t)(pc & 0x00FF);
+  **sp = (uint8_t)(pc & 0x00FF); //PC_L
   --(*sp);
-  **sp = (uint8_t)((pc>>8) & 0x00FF);
+  **sp = (uint8_t)((pc>>8) & 0x00FF); //PC_H
   --(*sp);
-  **sp = 0;
+  **sp = 0; //R1
   --(*sp);
-  **sp = 0b10000000;
+  **sp = 0b10000000; //SREG
   --(*sp);
-  **sp = 0;
+  **sp = 0; //R0
   --(*sp);
-  **sp = 0;
+  **sp = 0; //R18
   --(*sp);
-  **sp = 0;
+  **sp = 0; //R19
   --(*sp);
-  **sp = 0;
+  **sp = 0; //R24
   --(*sp);
-  **sp = 0;
+  **sp = 0; //R25
   --(*sp);
-  **sp = 0;
+  **sp = 0; //R30
   --(*sp);
-  **sp = 0;
+  **sp = 0; //R31
   --(*sp);
-  **sp = 0;
+  **sp = 0; //R28
   --(*sp);
-  **sp = 0;
+  **sp = 0; //R29
   --(*sp);
 }
 
